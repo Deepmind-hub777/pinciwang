@@ -4,3 +4,7 @@ build/MaShanZheng.ttf
 build/__pycache__/
 build/rows.json
 build/verify*.json
+build/more_cache.json
+build/*.log
+build/main_levels.json
+build/bonus_levels.json
