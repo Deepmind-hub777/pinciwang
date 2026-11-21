@@ -3,3 +3,4 @@ build/dictionary.txt
 build/MaShanZheng.ttf
 build/__pycache__/
 build/rows.json
+build/verify*.json

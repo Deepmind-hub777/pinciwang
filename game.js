@@ -3,31 +3,93 @@
 "use strict";
 var KEY="pinciwang.v1";
 var HINT_COST=30, FIND_COIN=2, CLEAR_COIN=20, GIFT_COIN=60, GIFT_MS=4*3600*1000;
-var S={found:{},hints:{},miss:{},cleared:{},stars:{},coins:100,sound:true,gift:0,cur:0};
+var S={found:{},hints:{},miss:{},cleared:{},stars:{},coins:100,sound:true,music:true,musicVol:0.22,gift:0,cur:0};
 function load(){try{var r=localStorage.getItem(KEY);if(r){var p=JSON.parse(r);for(var k in p)S[k]=p[k];}}catch(e){}
   if(!S.gift) S.gift=Date.now();}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 
 /* ---------- sound ---------- */
-var AC=null;
-function tone(f,dur,type,gain,delay){
-  if(!S.sound) return;
-  try{ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)();
-    var t0=AC.currentTime+(delay||0);
-    var o=AC.createOscillator(),g=AC.createGain();
-    o.type=type||"sine";o.frequency.setValueAtTime(f,t0);g.gain.setValueAtTime(gain||0.06,t0);
-    o.connect(g);g.connect(AC.destination);o.start(t0);
-    g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);o.stop(t0+dur+0.02);
-  }catch(e){}
-}
+/* 预生成音频：audio/sfx 音效、audio/vo 语音、audio/zi 单字读音（按关懒加载）。
+   首次点击时解锁 AudioContext（iOS/Android 要求用户手势）。文件缺失时退回 speechSynthesis。 */
+var AU=(function(){
+  var ctx=null, buf={}, pend={}, bgmSrc=null, bgmGain=null, voiceSrc=null, unlocked=false, queue=Promise.resolve();
+  var SFX=["tap","untap","click","correct","wrong","dup","hint","coin","clear","gift","start"];
+  var VO={"小试牛刀":"xiaoshiniudao","渐入佳境":"jianrujiajing","炉火纯青":"luhuochunqing","登峰造极":"dengfengzaoji",
+    "无懈可击":"wuxiekeji","游刃有余":"yourenyouyu","略有小成":"lueyouxiaocheng","勉强过关":"mianqiangguoguan",
+    "太棒了":"taibangle","真厉害":"zhenlihai","好眼力":"haoyanli","恭喜过关":"gongxiguoguan","再想想":"zaixiangxiang",
+    "这个字已经找到过了":"yizhaodao","加油":"jiayou"};
+  function mk(){ if(ctx) return ctx; var C=window.AudioContext||window.webkitAudioContext; if(!C) return null;
+    ctx=new C(); return ctx; }
+  function load(url){
+    if(buf[url]) return Promise.resolve(buf[url]);
+    if(pend[url]) return pend[url];
+    if(!mk()) return Promise.reject(new Error("no audio"));
+    pend[url]=fetch(url).then(function(r){ if(!r.ok) throw new Error("404 "+url); return r.arrayBuffer(); })
+      .then(function(ab){ return new Promise(function(res,rej){ ctx.decodeAudioData(ab,res,rej); }); })
+      .then(function(b){ buf[url]=b; delete pend[url]; return b; })
+      .catch(function(e){ delete pend[url]; throw e; });
+    return pend[url];
+  }
+  function playBuf(b,gain,loop){
+    var src=ctx.createBufferSource(), g=ctx.createGain(); src.buffer=b; src.loop=!!loop; g.gain.value=gain==null?1:gain;
+    src.connect(g); g.connect(ctx.destination); src.start(0); return {src:src,g:g};
+  }
+  function unlock(){
+    if(unlocked) return; if(!mk()) return;
+    try{ var b=ctx.createBuffer(1,1,22050); var s=ctx.createBufferSource(); s.buffer=b; s.connect(ctx.destination); s.start(0); }catch(e){}
+    if(ctx.resume) ctx.resume();
+    unlocked=true;
+    SFX.forEach(function(n){ load("audio/sfx/"+n+".mp3").catch(function(){}); });
+    Object.keys(VO).forEach(function(k){ load("audio/vo/"+VO[k]+".mp3").catch(function(){}); });
+    if(S.music) startBgm();
+  }
+  ["pointerdown","touchend","mousedown","keydown"].forEach(function(ev){ document.addEventListener(ev,unlock,{capture:true,passive:true}); });
+  function sfx(name,gain){
+    if(!S.sound||!ctx) return;
+    load("audio/sfx/"+name+".mp3").then(function(b){ playBuf(b,gain==null?0.8:gain); }).catch(function(){});
+  }
+  function tts(text){
+    try{ if(!window.speechSynthesis) return; var u=new SpeechSynthesisUtterance(text); u.lang="zh-CN"; u.rate=0.9;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);}catch(e){}
+  }
+  function voiceURL(url,fallbackText,delay){
+    if(!S.sound) return Promise.resolve();
+    if(!ctx){ tts(fallbackText); return Promise.resolve(); }
+    return new Promise(function(res){
+      setTimeout(function(){
+        load(url).then(function(b){
+          if(voiceSrc){ try{voiceSrc.stop();}catch(e){} }
+          var p=playBuf(b,1); voiceSrc=p.src; p.src.onended=function(){res();};
+          if(bgmGain){ bgmGain.gain.setTargetAtTime(0.06,ctx.currentTime,0.05); bgmGain.gain.setTargetAtTime(S.musicVol||0.22,ctx.currentTime+b.duration,0.3); }
+        }).catch(function(){ tts(fallbackText); res(); });
+      },delay||0);
+    });
+  }
+  function line(text,delay){ var k=VO[text]; return voiceURL(k?"audio/vo/"+k+".mp3":"audio/vo/__none.mp3",text,delay); }
+  function zi(a,delay){ return voiceURL("audio/zi/"+a.au+".mp3",a.c,delay); }
+  function preloadLevel(L){ if(!ctx) return; L.a.forEach(function(a){ load("audio/zi/"+a.au+".mp3").catch(function(){}); }); }
+  function startBgm(){
+    if(!ctx||bgmSrc||!S.music) return;
+    load("audio/sfx/bgm.mp3").then(function(b){ if(bgmSrc||!S.music) return; var p=playBuf(b,0,true); bgmSrc=p.src; bgmGain=p.g;
+      p.g.gain.setTargetAtTime(S.musicVol||0.22,ctx.currentTime,0.8); }).catch(function(){});
+  }
+  function stopBgm(){ if(bgmSrc){ try{bgmSrc.stop();}catch(e){} } bgmSrc=null; bgmGain=null; }
+  document.addEventListener("visibilitychange",function(){ if(!ctx) return; if(document.hidden) ctx.suspend&&ctx.suspend(); else ctx.resume&&ctx.resume(); });
+  return {sfx:sfx,line:line,zi:zi,preloadLevel:preloadLevel,startBgm:startBgm,stopBgm:stopBgm,unlock:unlock,
+          _state:function(){return {ctx:ctx&&ctx.state,loaded:Object.keys(buf).length,bgm:!!bgmSrc};}};
+})();
 var sfx={
-  tap:function(on){tone(on?820:540,.05,"triangle",.045);},
-  ok:function(){tone(660,.12,"sine",.07);tone(990,.18,"sine",.06,.1);},
-  no:function(){tone(200,.16,"square",.035);},
-  coin:function(){tone(1320,.08,"square",.03);tone(1760,.12,"square",.03,.07);},
-  win:function(){[523,659,784,1047].forEach(function(f,i){tone(f,.22,"triangle",.06,i*.12);});}
+  tap:function(on){AU.sfx(on?"tap":"untap",0.7);},
+  click:function(){AU.sfx("click",0.6);},
+  ok:function(){AU.sfx("correct",0.8);},
+  no:function(){AU.sfx("wrong",0.7);},
+  dup:function(){AU.sfx("dup",0.8);},
+  hint:function(){AU.sfx("hint",0.7);},
+  coin:function(){AU.sfx("coin",0.7);},
+  gift:function(){AU.sfx("gift",0.8);},
+  start:function(){AU.sfx("start",0.6);},
+  win:function(){AU.sfx("clear",0.9);}
 };
-
 /* ---------- helpers ---------- */
 function $(id){return document.getElementById(id);}
 function toast(msg){var el=$("toast");el.textContent=msg;el.classList.add("show");clearTimeout(el._t);
@@ -50,7 +112,7 @@ function refreshCoin(){var e=$("coinv");if(e)e.textContent=S.coins;}
 function renderHome(){
   stopTimer();
   var nx=firstOpen(), allDone=LEVELS.every(function(_,i){return isCleared(i);});
-  var h='<div class="home"><div class="topline"><span></span>'+coinHTML()+'</div>'+
+  var h='<div class="home"><div class="topline"><span class="mus'+(S.music?" on":"")+'" id="mus" title="背景音乐">♪</span>'+coinHTML()+'</div>'+
     '<div class="logo"><div class="ink-blob"></div><h1>天天拼词王</h1><div class="seal">字中找字</div></div>'+
     '<div class="slogan">一字拆出千万意</div>'+
     '<div class="menu">'+
@@ -61,8 +123,9 @@ function renderHome(){
     '点选或划过笔画把它们<b>描黑</b>，拼成一个字就点「提交」。<br>找齐全部隐藏字即可过关；卡住时用「提示」（'+HINT_COST+' 金币）。</div>'+
     '</div>';
   $("app").innerHTML=h;
-  $("start").onclick=function(){sfx.tap(true);renderLevel(nx);};
-  $("pick").onclick=function(){sfx.tap(true);openPicker();};
+  $("start").onclick=function(){sfx.click();renderLevel(nx);};
+  $("pick").onclick=function(){sfx.click();openPicker();};
+  $("mus").onclick=function(){S.music=!S.music;save();this.classList.toggle("on",S.music);AU.unlock();if(S.music)AU.startBgm();else AU.stopBgm();toast(S.music?"背景音乐：开":"背景音乐：关");};
 }
 
 /* ---------- play ---------- */
@@ -106,10 +169,11 @@ function renderLevel(i){
   board.style.height=(Math.min(window.innerWidth*0.86,360)*(H+2*pad)/(W+2*pad))+"px";
   $("gear").onclick=openSettings;
   $("gift").onclick=claimGift;
-  $("clear").onclick=function(){st.sel.clear();paint();sfx.tap(false);};
+  $("clear").onclick=function(){st.sel.clear();paint();sfx.click();};
   $("hint").onclick=useHint;
   $("submit").onclick=submit;
   buildGeom(); renderSlots(); paint(); bindPointer(); startTimer();
+  st.streak=0; st.wrongRun=0; AU.preloadLevel(L); sfx.start(); AU.line(tier(i),350);
 }
 
 function buildGeom(){
@@ -130,6 +194,11 @@ function renderSlots(newc){
        '<div class="cell">'+(on?'<span>'+esc(a.c)+'</span>':"")+'</div></div>';
   });
   $("slots").innerHTML=h;
+  $("slots").querySelectorAll(".slot").forEach(function(el,k){
+    var a=L.a[k]; if(f.indexOf(a.c)<0) return;
+    el.classList.add("speak"); el.title="点击朗读";
+    el.onclick=function(){ el.classList.remove("say"); void el.offsetWidth; el.classList.add("say"); AU.zi(a,0); };
+  });
 }
 
 function paint(){
@@ -139,7 +208,7 @@ function paint(){
   });
   var L=LEVELS[st.idx], need=L.a.length-foundOf(L.n).length;
   $("tip").innerHTML=st.sel.size?'已描黑 <b>'+st.sel.size+'</b> 笔 · 还差 <b>'+need+'</b> 个字'
-    :(need?'点选或划过笔画，把字描黑后点「提交」':'本关已全部找齐');
+    :(need?(foundOf(L.n).length?'点选或划过笔画描黑后「提交」 · 点已找到的字可听读音':'点选或划过笔画，把字描黑后点「提交」'):'本关已全部找齐 · 点字可听读音');
   $("submit").classList.toggle("off",st.sel.size===0);
 }
 
@@ -192,14 +261,20 @@ function submit(){
   if(hit){
     f.push(hit.c); S.coins+=FIND_COIN; save();
     sfx.ok(); toast("找到「"+hit.c+"」！金币 +"+FIND_COIN);
+    st.streak=(st.streak||0)+1; st.wrongRun=0;
+    var last=f.length===L.a.length;
+    AU.zi(hit,380).then(function(){ if(!last&&st.streak%3===0){ AU.line(["好眼力","真厉害","太棒了"][(st.streak/3-1)%3],120); } });
     flash(Array.from(st.sel));
     st.sel.clear(); paint(); renderSlots(hit.c); refreshCoin();
-    if(f.length===L.a.length) setTimeout(function(){sfx.win();openWin();},700);
+    if(last) setTimeout(function(){sfx.win();openWin();},1100);
     return;
   }
   S.miss[L.n]=(S.miss[L.n]||0)+1; save();
   toast(dup?"这个字已经找到过了":"这组笔画拼不出隐藏字，换个组合试试");
-  sfx.no(); shake();
+  st.streak=0;
+  if(dup){ sfx.dup(); AU.line("这个字已经找到过了",250); }
+  else { sfx.no(); st.wrongRun=(st.wrongRun||0)+1; if(st.wrongRun%3===0) AU.line("再想想",350); }
+  shake();
 }
 function flash(ids){
   st.geoms.forEach(function(g){ if(ids.indexOf(g.i)>=0){ g.el.setAttribute("fill","#c8402f"); } });
@@ -216,7 +291,7 @@ function useHint(){
   if(S.coins<HINT_COST){toast("金币不足 "+HINT_COST+"，领取礼包或多找几个字吧");sfx.no();return;}
   // 优先提示还没提示过的字
   var target=unf.filter(function(a){return hs.indexOf(a.c)<0;})[0]||unf[0];
-  S.coins-=HINT_COST; if(hs.indexOf(target.c)<0) hs.push(target.c); save(); refreshCoin(); sfx.coin();
+  S.coins-=HINT_COST; if(hs.indexOf(target.c)<0) hs.push(target.c); save(); refreshCoin(); sfx.hint(); setTimeout(sfx.coin,250);
   st.sel=new Set(target.k[0]);
   paint(); renderSlots();
   toast("已帮你描黑一个隐藏字（"+target.py+"），直接提交即可");
@@ -242,8 +317,9 @@ function openWin(){
     (first?'<div class="reward">过关奖励：金币 +'+CLEAR_COIN+'</div>':'')+
     '<div class="acts"><div class="btn" id="rh">返回首页</div><div class="btn primary" id="rn">下一关</div></div></div>';
   m.classList.add("open");
-  $("rh").onclick=function(){m.classList.remove("open");renderHome();};
-  $("rn").onclick=function(){m.classList.remove("open");renderLevel((st.idx+1)%LEVELS.length);};
+  AU.line("恭喜过关",900).then(function(){ AU.line(r[1],150); });
+  $("rh").onclick=function(){sfx.click();m.classList.remove("open");renderHome();};
+  $("rn").onclick=function(){sfx.click();m.classList.remove("open");renderLevel((st.idx+1)%LEVELS.length);};
 }
 
 /* ---------- gift / timer ---------- */
@@ -256,27 +332,31 @@ function stopTimer(){if(st.timer)clearInterval(st.timer);st.timer=null;}
 function claimGift(){
   var left=S.gift+GIFT_MS-Date.now();
   if(left>0){toast("礼包还在准备中，"+fmt(left)+" 后可领取");return;}
-  S.gift=Date.now();S.coins+=GIFT_COIN;save();refreshCoin();tick();sfx.coin();
+  S.gift=Date.now();S.coins+=GIFT_COIN;save();refreshCoin();tick();sfx.gift();setTimeout(sfx.coin,500);
   toast("领取每日礼包：金币 +"+GIFT_COIN);
 }
 
 /* ---------- settings / picker ---------- */
 function openSettings(){
+  sfx.click();
   var m=$("mask");
   m.innerHTML='<div class="card"><h3>设置</h3>'+
-    '<div class="setrow"><span>音效</span><div class="switch'+(S.sound?" on":"")+'" id="sw"></div></div>'+
+    '<div class="setrow"><span>音效与语音</span><div class="switch'+(S.sound?" on":"")+'" id="sw"></div></div>'+
+    '<div class="setrow"><span>背景音乐</span><div class="switch'+(S.music?" on":"")+'" id="swm"></div></div>'+
     '<div class="setrow"><span>当前金币</span><b style="color:var(--bronze)">'+S.coins+'</b></div>'+
     '<div class="setrow"><span>已通关</span><b>'+Object.keys(S.cleared).length+' / '+LEVELS.length+'</b></div>'+
     '<div class="acts"><div class="btn" id="sh">返回首页</div><div class="btn" id="sp">选择关卡</div></div>'+
     '<div class="acts"><div class="btn" id="sr" style="font-size:13px;color:#a0503c">重置进度</div><div class="btn primary" id="sc">继续游戏</div></div></div>';
   m.classList.add("open");
-  $("sw").onclick=function(){S.sound=!S.sound;save();this.classList.toggle("on",S.sound);};
+  $("sw").onclick=function(){S.sound=!S.sound;save();this.classList.toggle("on",S.sound);sfx.click();};
+  $("swm").onclick=function(){S.music=!S.music;save();this.classList.toggle("on",S.music);if(S.music)AU.startBgm();else AU.stopBgm();};
   $("sh").onclick=function(){m.classList.remove("open");renderHome();};
   $("sp").onclick=function(){openPicker();};
   $("sc").onclick=function(){m.classList.remove("open");};
   $("sr").onclick=function(){ if(confirm("确定清空全部进度和金币？")){ localStorage.removeItem(KEY); location.reload(); } };
 }
 function openPicker(){
+  sfx.click();
   var m=$("mask"), h='<div class="picker"><div class="h"><b>选择关卡</b><span class="x" id="px">✕</span></div>';
   var tiers=["小试牛刀","渐入佳境","炉火纯青","登峰造极","无懈可击"];
   tiers.forEach(function(t){
@@ -298,5 +378,5 @@ function openPicker(){
 }
 
 load(); renderHome();
-window.__pcw={S:S,st:st,LEVELS:LEVELS,renderLevel:renderLevel,submit:submit,useHint:useHint,renderHome:renderHome};
+window.__pcw={AU:AU,S:S,st:st,LEVELS:LEVELS,renderLevel:renderLevel,submit:submit,useHint:useHint,renderHome:renderHome};
 })();
