@@ -1,4 +1,4 @@
-/* 天天拼词王 · 网页复刻版 v3 —— 字中找字（主园 + 后花园） */
+/* 天天拼词王 · 网页复刻版 v4 —— 字中找字（主园 + 后花园） */
 (function(){
 "use strict";
 var KEY="pinciwang.v1";
@@ -116,7 +116,7 @@ function tier(i,g){ g=g||S.g; var b=g==="bonus"?[10,30,60,80]:[30,120,300,600];
   for(var k=0;k<4;k++){ if(i<b[k]) return TIERS[k]; } return TIERS[4]; }
 function unitWord(){return S.g==="bonus"?"个偏旁部件":"个常用字";}
 function stats(g){var d=S.G[g],L=IDX[g],got=0,cl=0,stars=0;
-  L.forEach(function(x){var f=d.found[x[0]];got+=f?f.length:0; if(d.cleared[x[0]])cl++; stars+=d.stars[x[0]]||0;});
+  L.forEach(function(x){var f=d.found[x[0]];got+=f?Math.min(f.length,x[2]):0; if(d.cleared[x[0]])cl++; stars+=d.stars[x[0]]||0;});
   return {got:got,cl:cl,stars:stars,total:L.length};}
 var GEAR='<svg viewBox="0 0 48 48"><defs><radialGradient id="gg" cx="40%" cy="35%"><stop offset="0" stop-color="#d9b98b"/><stop offset="1" stop-color="#8b6a43"/></radialGradient></defs>'+
   '<path d="M24 2c4 0 5 4 8 5s7-1 9 2-1 6 0 9 5 4 5 6-4 4-5 6 2 6 0 9-6 1-9 2-4 5-8 5-5-4-8-5-7 1-9-2 1-6 0-9-5-4-5-6 4-4 5-6-2-6 0-9 6-1 9-2 4-5 8-5z" fill="url(#gg)" stroke="#5e4428" stroke-width="1.5"/>'+
@@ -134,7 +134,7 @@ function getLevel(g,i){
   var start=Math.floor(i/CHUNK)*CHUNK, key=g+start;
   return new Promise(function(res,rej){
     var first=!waiting[key]; (waiting[key]=waiting[key]||[]).push(function(){res(CH[g][i]);});
-    if(first){ var sc=document.createElement("script"); sc.src="data/"+g+"-"+String(start/CHUNK).padStart(2,"0")+".js?v=3";
+    if(first){ var sc=document.createElement("script"); sc.src="data/"+g+"-"+String(start/CHUNK).padStart(2,"0")+".js?v=4";
       sc.onerror=function(){ delete waiting[key]; rej(new Error("关卡数据加载失败")); }; document.body.appendChild(sc); }
   });
 }
@@ -184,7 +184,7 @@ function renderLevel(i){
   var nxt=i+1; if(nxt<list().length && nxt%CHUNK===0) getLevel(S.g,nxt).catch(function(){});
 }
 function drawLevel(i,L){
-  st.idx=i; st.L=L; st.sel=new Set(); D().cur=i; save();
+  st.idx=i; st.L=L; st.sel=new Set(); D().cur=i; pruneSave(L); save();
   var lay=layout(L.ch.length), cols=lay[0], rows=lay[1];
   var CELL=1024, pad=40, W=cols*CELL, H=rows*CELL;
   var svg='<svg id="board" viewBox="'+(-pad)+' '+(-pad)+' '+(W+2*pad)+' '+(H+2*pad)+'" xmlns="http://www.w3.org/2000/svg">';
@@ -214,6 +214,11 @@ function drawLevel(i,L){
   $("submit").onclick=submit;
   buildGeom(); renderSlots(); paint(); bindPointer(); startTimer();
   st.streak=0; st.wrongRun=0; AU.preloadLevel(L); sfx.start(); AU.line(tier(i),350);
+}
+/* 存档兼容：答案表更新后，去掉已不在本关答案里的旧记录；已通关与星级保持不变 */
+function pruneSave(L){
+  var ok={}; L.a.forEach(function(a){ok[a.c]=1;}); var d=D();
+  ["found","hints"].forEach(function(k){ var f=d[k][L.n]; if(f){ var g=f.filter(function(c,j){return ok[c]&&f.indexOf(c)===j;}); if(g.length!==f.length) d[k][L.n]=g; } });
 }
 function buildGeom(){
   st.svg=$("board"); st.geoms=[];
@@ -300,7 +305,7 @@ function submit(){
     f.push(hit.c); D().coins+=FIND_COIN; save();
     sfx.ok(); toast("找到「"+hit.c+"」"+(S.g==="bonus"?" "+hit.nm:"")+"！金币 +"+FIND_COIN);
     st.streak=(st.streak||0)+1; st.wrongRun=0;
-    var last=f.length===L.a.length;
+    var last=L.a.every(function(a){return f.indexOf(a.c)>=0;});
     (S.voice?AU.zi(hit,380):Promise.resolve()).then(function(){ if(!last&&st.streak%3===0){ AU.line(["好眼力","真厉害","太棒了"][(st.streak/3-1)%3],120); } });
     flash(Array.from(st.sel));
     st.sel.clear(); paint(); renderSlots(hit.c); refreshCoin();
