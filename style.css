@@ -1,4 +1,4 @@
-@font-face{font-family:"Brush";src:url("fonts/brush.woff2") format("woff2");font-display:swap}
+@font-face{font-family:"Brush";src:url("fonts/brush.woff2?v=5") format("woff2");font-display:swap}
 :root{
   --bg1:#f4f1e4; --bg2:#e7efe6; --paper:#fbf8ee; --card:#fffdf6;
   --ink:#2a2119; --ink2:#5d5040; --ink3:#9a8b74; --line:#e0cfae;

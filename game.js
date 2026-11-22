@@ -1,4 +1,4 @@
-/* 天天拼词王 · 网页复刻版 v4 —— 字中找字（主园 + 后花园） */
+/* 天天拼词园 · 网页复刻版 v4 —— 字中找字（主园 + 后花园） */
 (function(){
 "use strict";
 var KEY="pinciwang.v1";
@@ -144,7 +144,7 @@ function renderHome(){
   var nx=firstOpen(), L=list(), allDone=L.every(function(_,i){return isCleared(i);}), sm=stats(S.g);
   var giftReady=D().gift+GIFT_MS<=Date.now();
   var h='<div class="home"><div class="topline"><span class="mus'+(S.music?" on":"")+'" id="mus" title="背景音乐">♪</span>'+coinHTML()+'</div>'+
-    '<div class="logo"><div class="ink-blob"></div><h1>天天拼词王</h1><div class="seal">字中找字</div></div>'+
+    '<div class="logo"><div class="ink-blob"></div><h1>天天拼词园</h1><div class="seal">字中找字</div></div>'+
     '<div class="slogan">一字拆出千万意</div>'+
     '<div class="gtabs">'+["main","bonus"].map(function(g){return '<div class="gtab'+(S.g===g?" on":"")+'" data-g="'+g+'">'+GNAME[g]+'<small>'+IDX[g].length+' 关</small></div>';}).join("")+'</div>'+
     '<div class="gdesc">'+(S.g==="main"?"从汉字里描出藏着的<b>常用字</b>":"从汉字里描出<b>偏旁部件</b>，点一下能听名称")+' · 金币与进度各自独立</div>'+
