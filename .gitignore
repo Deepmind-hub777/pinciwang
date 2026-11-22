@@ -12,3 +12,4 @@ build/main_levels_v*.json
 build/bonus_levels_v*.json
 build/segcache_v4.pkl
 build/miss_cache.json
+build/bushou/__pycache__/

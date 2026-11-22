@@ -1,5 +1,5 @@
 /* 书法体：钟齐志莽行书 Zhi Mang Xing（SIL OFL 1.1，见 fonts/OFL-ZhiMangXing.txt），已按页面用字子集化 */
-@font-face{font-family:"Brush";src:url("fonts/callig.woff2?v=5") format("woff2");font-display:swap}
+@font-face{font-family:"Brush";src:url("fonts/callig.woff2?v=6") format("woff2");font-display:swap}
 :root{
   --bg1:#f4f1e4; --bg2:#e7efe6; --paper:#fbf8ee; --card:#fffdf6;
   --ink:#2a2119; --ink2:#5d5040; --ink3:#9a8b74; --line:#e0cfae;
@@ -289,3 +289,54 @@ body{font-family:var(--font-ui);touch-action:manipulation;font-feature-settings:
 .card .btn{font-family:var(--font-callig);font-weight:400;font-size:22px;letter-spacing:.14em}
 .card .btn#sr{font-family:var(--font-ui);font-weight:400}
 @media (max-width:370px){.bigbtn{font-size:30px}.gtab{font-size:24px}}
+
+/* ================= v6：后花园 · 部首与结构挑战 ================= */
+.qdots{display:flex;justify-content:center;gap:6px;margin:8px 0 2px}
+.qdots i{width:10px;height:10px;border-radius:50%;background:#e3d6bb;box-shadow:inset 0 0 0 1px rgba(150,120,80,.25)}
+.qdots i.cur{background:#fff;box-shadow:0 0 0 2px var(--orange)}
+.qdots i.ok{background:#7fa35f}.qdots i.no{background:#d9654c}
+.qzi{display:flex;flex-direction:column;align-items:center;margin-top:8px}
+.tzg{position:relative;width:clamp(128px,38vw,156px);height:clamp(128px,38vw,156px);border:2px solid #b77f6b;border-radius:6px;background:#fffaf2;
+  display:flex;align-items:center;justify-content:center;font-size:clamp(92px,28vw,116px);line-height:1;color:var(--ink);cursor:pointer;user-select:none;
+  box-shadow:0 3px 0 rgba(183,127,107,.35),0 10px 24px rgba(110,80,30,.10)}
+.tzg::before,.tzg::after{content:"";position:absolute;inset:0;pointer-events:none}
+.tzg::before{background:linear-gradient(var(--grid),var(--grid)) center/100% 1px no-repeat,linear-gradient(var(--grid),var(--grid)) center/1px 100% no-repeat;opacity:.8}
+.tzg::after{background:linear-gradient(45deg,transparent calc(50% - .5px),rgba(232,185,168,.5) 50%,transparent calc(50% + .5px)),
+  linear-gradient(-45deg,transparent calc(50% - .5px),rgba(232,185,168,.5) 50%,transparent calc(50% + .5px))}
+.tzg span{position:relative;z-index:1}
+.tzg.say{animation:say .5s ease}
+.qpy{min-height:22px;margin-top:6px;font-size:var(--fs-lg);color:var(--bronze);letter-spacing:.04em}
+.qstep{margin:10px auto 0;max-width:440px;transition:opacity .2s}
+.qstep.wait{opacity:.45;pointer-events:none}
+.qh{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:var(--fs-md);color:var(--ink2);margin-bottom:8px}
+.qh em{font-style:normal;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff6ea;font-size:13px;display:inline-flex;align-items:center;justify-content:center;font-weight:600}
+.qh b{font-weight:600;font-size:var(--fs-sm);padding:1px 8px;border-radius:10px}
+.qh b.ok{background:#e4efd9;color:#3d5a26}.qh b.no{background:#f8e1da;color:#9c3a26}
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sopt{min-height:var(--tap);padding:6px 2px 5px;border:1.5px solid var(--line);border-radius:12px;background:#fffaf0;display:flex;flex-direction:column;align-items:center;gap:2px;
+  cursor:pointer;user-select:none;font-size:var(--fs-sm);color:var(--ink);transition:transform .1s var(--ease),background .2s,border-color .2s,opacity .2s}
+.sopt svg{width:22px;height:22px;fill:rgba(198,164,118,.25);stroke:var(--bronze);stroke-width:1.4}
+.rgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.ropt{min-height:64px;border:2px solid #d8bd8b;border-radius:14px;background:linear-gradient(180deg,#fffdf6,#f6ead0);display:flex;align-items:center;justify-content:center;
+  font-size:38px;line-height:1;color:var(--ink);cursor:pointer;user-select:none;box-shadow:0 3px 0 #d9c39a;transition:transform .1s var(--ease),background .2s,opacity .2s}
+.sopt:active,.ropt:active{transform:translateY(2px)}
+.sopt.right,.ropt.right{background:#e4efd9;border-color:#7fa35f;color:#2f4a1d;box-shadow:0 0 0 3px rgba(127,163,95,.25)}
+.sopt.right svg{stroke:#4c7032;fill:rgba(127,163,95,.25)}
+.sopt.wrong,.ropt.wrong{background:#f8e1da;border-color:#d9654c;color:#8f2a1e}
+.sopt.dim,.ropt.dim{opacity:.45}
+.qstep.done .sopt,.qstep.done .ropt{cursor:default}
+.qinfo{max-width:440px;margin:12px auto 0;background:rgba(255,253,246,.9);border:1px dashed var(--line);border-radius:12px;padding:10px 14px;font-size:var(--fs-md);color:var(--ink2);display:none;line-height:1.8}
+.qinfo.show{display:block}
+.qinfo .lab{display:inline-block;min-width:3em;color:var(--ink3);font-size:var(--fs-sm)}
+.qinfo b{font-size:22px;color:var(--red);font-weight:400;margin-right:2px}
+.qinfo small{margin-left:6px;font-size:var(--fs-xs);color:var(--ink3)}
+.qinfo .tapme{font-size:var(--fs-xs);color:var(--ink3)}
+.qacts{max-width:260px}
+.card .big small{font-size:28px;color:var(--ink3)}
+.card .review{text-align:left;max-height:34vh;overflow:auto;margin-top:6px}
+.card .review .rt{font-size:var(--fs-sm);color:var(--ink3)}
+.card .review .rv{display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px dashed var(--line);font-size:var(--fs-sm)}
+.card .review .rv i{font-size:28px;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;border-bottom:0}
+.card .review .rv b{color:var(--red);font-size:18px;font-weight:400}
+.card .acts .btn{font-size:20px}
+@media (max-width:370px){.sgrid{gap:6px}.sopt{font-size:12px}.ropt{min-height:56px;font-size:32px}}

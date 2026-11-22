@@ -1,15 +1,22 @@
-/* 天天拼词园 · 网页复刻版 v5 —— 字中找字（主园 + 后花园） */
+/* 天天拼词园 · 网页复刻版 v6 —— 主园：字中找字；后花园：部首与结构挑战 */
 (function(){
 "use strict";
 var KEY="pinciwang.v1";
 var HINT_COST=30, FIND_COIN=2, CLEAR_COIN=20, GIFT_COIN=60, GIFT_MS=4*3600*1000;
-var IDX=window.PCW_INDEX; /* {main:[[n,t,count,strokes]...], bonus:[...]} */
-var GNAME={main:"主园",bonus:"后花园"};
-function blank(){return {found:{},hints:{},miss:{},cleared:{},stars:{},coins:100,gift:Date.now(),cur:0};}
-var S={v:3,g:"main",sound:true,music:true,musicVol:0.22,voice:true,reveal:false,G:{main:blank(),bonus:blank()}};
+var IDX=window.PCW_INDEX; /* {main:[[n,t,count,strokes]...]} */
+var BS=window.PCW_BUSHOU||{tiers:[],levels:[]}; /* 后花园题库：levels=[[tier,[[字,结构,细类,部首,名称,选项,拼音,读音,主部首]...]]...] */
+IDX.bushou=BS.levels.map(function(L,i){return [i+1,L[1][0][0],L[1].length,L[0]];});
+var GNAME={main:"主园",bushou:"后花园"};
+function blank(){return {found:{},hints:{},miss:{},cleared:{},stars:{},best:{},got:{},coins:100,gift:Date.now(),cur:0};}
+var S={v:4,g:"main",sound:true,music:true,musicVol:0.22,voice:true,reveal:false,G:{main:blank(),bushou:blank()}};
 function load(){
   try{var r=localStorage.getItem(KEY);if(r){var p=JSON.parse(r);
-    if(p.v===3){ for(var k in p) S[k]=p[k]; S.G.main=S.G.main||blank(); S.G.bonus=S.G.bonus||blank(); }
+    if(p.v===3||p.v===4){ for(var k in p) S[k]=p[k]; S.G.main=S.G.main||blank();
+      if(p.v===3){ /* v6：旧后花园（找偏旁部件）关卡已整体替换——金币与礼包计时迁到新后花园，旧关卡进度不再使用；主园存档原样保留 */
+        var ob=S.G.bonus, nb=blank(); if(ob){ nb.coins=ob.coins!=null?ob.coins:nb.coins; nb.gift=ob.gift||nb.gift; }
+        S.G.bushou=nb; if(ob){ S.G.bonusOld=ob; delete S.G.bonus; } if(S.g==="bonus") S.g="bushou"; S.v=4; }
+      S.G.bushou=S.G.bushou||blank(); var bb=S.G.bushou; ["best","got","stars","cleared"].forEach(function(k){ bb[k]=bb[k]||{}; });
+      if(S.g!=="main"&&S.g!=="bushou") S.g="main"; }
     else { /* v1/v2 存档迁移到主园 */
       var m=blank(); ["found","hints","miss","cleared","stars","coins","gift","cur"].forEach(function(k){ if(p[k]!=null) m[k]=p[k]; });
       S.G.main=m; ["sound","music","musicVol"].forEach(function(k){ if(p[k]!=null) S[k]=p[k]; });
@@ -26,7 +33,8 @@ var AU=(function(){
   var VO={"小试牛刀":"xiaoshiniudao","渐入佳境":"jianrujiajing","炉火纯青":"luhuochunqing","登峰造极":"dengfengzaoji",
     "无懈可击":"wuxiekeji","游刃有余":"yourenyouyu","略有小成":"lueyouxiaocheng","勉强过关":"mianqiangguoguan",
     "太棒了":"taibangle","真厉害":"zhenlihai","好眼力":"haoyanli","恭喜过关":"gongxiguoguan","再想想":"zaixiangxiang",
-    "这个字已经找到过了":"yizhaodao","加油":"jiayou"};
+    "这个字已经找到过了":"yizhaodao","加油":"jiayou","常见部首":"changjianbushou","少见部首":"shaojianbushou","易混部首":"yihunbushou",
+    "答对了":"dadui","再看看":"zailaiyici"};
   function mk(){ if(ctx) return ctx; var C=window.AudioContext||window.webkitAudioContext; if(!C) return null;
     ctx=new C(); return ctx; }
   function load(url){
@@ -76,6 +84,7 @@ var AU=(function(){
   }
   function line(text,delay){ var k=VO[text]; return voiceURL(k?"audio/vo/"+k+".mp3":"audio/vo/__none.mp3",text,delay); }
   function zi(a,delay){ return voiceURL("audio/"+a.au+".mp3",a.nm||a.c,delay); }
+  function pre(url){ if(ctx) load(url).catch(function(){}); }
   function preloadLevel(L){ if(!ctx) return; L.a.forEach(function(a){ load("audio/"+a.au+".mp3").catch(function(){}); }); }
   function startBgm(){
     if(!ctx||bgmSrc||!S.music) return;
@@ -84,7 +93,7 @@ var AU=(function(){
   }
   function stopBgm(){ if(bgmSrc){ try{bgmSrc.stop();}catch(e){} } bgmSrc=null; bgmGain=null; }
   document.addEventListener("visibilitychange",function(){ if(!ctx) return; if(document.hidden) ctx.suspend&&ctx.suspend(); else ctx.resume&&ctx.resume(); });
-  return {sfx:sfx,line:line,zi:zi,preloadLevel:preloadLevel,startBgm:startBgm,stopBgm:stopBgm,unlock:unlock,
+  return {sfx:sfx,line:line,zi:zi,pre:pre,preloadLevel:preloadLevel,startBgm:startBgm,stopBgm:stopBgm,unlock:unlock,
           _state:function(){return {ctx:ctx&&ctx.state,loaded:Object.keys(buf).length,bgm:!!bgmSrc};}};
 })();
 var sfx={
@@ -109,13 +118,15 @@ function meta(i){var x=list()[i];return {n:x[0],t:x[1],cnt:x[2],sk:x[3]};}
 function foundOf(n){var d=D();if(!d.found[n])d.found[n]=[];return d.found[n];}
 function hintedOf(n){var d=D();if(!d.hints[n])d.hints[n]=[];return d.hints[n];}
 function isCleared(i){return !!D().cleared[list()[i][0]];}
-function unlocked(i){return i===0||isCleared(i-1)||isCleared(i);}
+function unlocked(i){return i===0||isCleared(i-1)||isCleared(i)||(S.g==="bushou"&&IDX.bushou[i][3]!==IDX.bushou[i-1][3]);} /* 后花园：每一档的第一关都开放 */
 function firstOpen(){var L=list();for(var i=0;i<L.length;i++){if(!isCleared(i))return i;}return L.length-1;}
 var TIERS=["小试牛刀","渐入佳境","炉火纯青","登峰造极","无懈可击"];
-function tier(i,g){ g=g||S.g; var b=g==="bonus"?[10,30,60,80]:[30,120,300,600];
+function tierList(){ return S.g==="bushou"?BS.tiers:TIERS; }
+function tier(i,g){ g=g||S.g; if(g==="bushou") return BS.tiers[IDX.bushou[i][3]]; var b=[30,120,300,600];
   for(var k=0;k<4;k++){ if(i<b[k]) return TIERS[k]; } return TIERS[4]; }
-function unitWord(){return S.g==="bonus"?"个偏旁部件":"个常用字";}
+function unitWord(){return "个常用字";}
 function stats(g){var d=S.G[g],L=IDX[g],got=0,cl=0,stars=0;
+  if(g==="bushou"){ L.forEach(function(x){ if(d.cleared[x[0]])cl++; stars+=d.stars[x[0]]||0; }); return {got:Object.keys(d.got||{}).length,cl:cl,stars:stars,total:L.length}; }
   L.forEach(function(x){var f=d.found[x[0]];got+=f?Math.min(f.length,x[2]):0; if(d.cleared[x[0]])cl++; stars+=d.stars[x[0]]||0;});
   return {got:got,cl:cl,stars:stars,total:L.length};}
 var ICON={ /* v5：统一线性 SVG 图标（替代 emoji） */
@@ -138,7 +149,7 @@ function coinHTML(){return '<span class="coin" id="coin"><i>¥</i><span id="coin
 function refreshCoin(){var e=$("coinv");if(e)e.textContent=D().coins;}
 
 /* ---------- 关卡数据：按 50 关一包懒加载 ---------- */
-var CH={main:{},bonus:{}}, CHUNK=50, waiting={};
+var CH={main:{}}, CHUNK=50, waiting={};
 window.PCW_CHUNK=function(g,start,levels){ levels.forEach(function(L,k){ CH[g][start+k]=L; });
   var key=g+start; if(waiting[key]){ waiting[key].forEach(function(f){f();}); delete waiting[key]; } };
 function getLevel(g,i){
@@ -158,16 +169,18 @@ function renderHome(){
   var h='<div class="home"><div class="topline"><span class="mus'+(S.music?" on":"")+'" id="mus" title="背景音乐" aria-label="背景音乐">'+ICON.music+'</span>'+coinHTML()+'</div>'+
     '<div class="logo"><div class="ink-blob"></div><h1>天天拼词园</h1><div class="seal">字中找字</div></div>'+
     '<div class="slogan">一字拆出千万意</div>'+
-    '<div class="gtabs">'+["main","bonus"].map(function(g){return '<div class="gtab'+(S.g===g?" on":"")+'" data-g="'+g+'">'+GNAME[g]+'<small>'+IDX[g].length+' 关</small></div>';}).join("")+'</div>'+
-    '<div class="gdesc">'+(S.g==="main"?"从汉字里描出藏着的<b>常用字</b>":"从汉字里描出<b>偏旁部件</b>，点一下能听名称")+' · 金币与进度各自独立</div>'+
-    '<div class="stats"><div><b>'+sm.got+'</b><span>已得字</span></div><div><b>'+sm.cl+'/'+sm.total+'</b><span>通关</span></div><div><b>'+sm.stars+'</b><span>星</span></div></div>'+
+    '<div class="gtabs">'+["main","bushou"].map(function(g){return '<div class="gtab'+(S.g===g?" on":"")+'" data-g="'+g+'">'+GNAME[g]+'<small>'+IDX[g].length+' 关</small></div>';}).join("")+'</div>'+
+    '<div class="gdesc">'+(S.g==="main"?"从汉字里描出藏着的<b>常用字</b>":"按《新华字典》部首考<b>结构</b>和<b>部首</b>")+' · 金币与进度各自独立</div>'+
+    '<div class="stats"><div><b>'+sm.got+'</b><span>'+(S.g==="bushou"?"答对字":"已得字")+'</span></div><div><b>'+sm.cl+'/'+sm.total+'</b><span>通关</span></div><div><b>'+sm.stars+'</b><span>星</span></div></div>'+
     '<div class="menu">'+
       (giftReady?'<div class="bigbtn red" id="hgift">领取每日礼包<small>金币 +'+GIFT_COIN+'</small></div>':'')+
       '<div class="bigbtn" id="start">'+(allDone?"再玩一遍":"继续游戏")+'<small>'+GNAME[S.g]+' 第 '+meta(nx).n+' 关 · '+tier(nx)+'</small></div>'+
       '<div class="bigbtn green" id="pick">选择关卡</div>'+
     '</div>'+
-    '<div class="howto"><b>玩法说明</b><br>每关给出一个汉字（或一句话），字里藏着若干<b>'+(S.g==="main"?"常用字":"偏旁部件")+'</b>。<br>'+
-    '点选或划过笔画把它们<b>描黑</b>，拼成一个就点「提交」；点已找到的字能听读音。<br>找齐即可过关；卡住时用「提示」（'+HINT_COST+' 金币）。</div>'+
+    (S.g==="main"?'<div class="howto"><b>玩法说明</b><br>每关给出一个汉字（或一句话），字里藏着若干<b>常用字</b>。<br>'+
+    '点选或划过笔画把它们<b>描黑</b>，拼成一个就点「提交」；点已找到的字能听读音。<br>找齐即可过关；卡住时用「提示」（'+HINT_COST+' 金币）。</div>'
+    :'<div class="howto"><b>玩法说明</b><br>每关 10 个常用字。先选这个字的<b>结构</b>，再从四个里选出它的<b>部首</b>；答错会标出正确答案。<br>'+
+    '部首按国家规范《汉字部首表》和《部首归部规范》（新版《新华字典》同一标准）；答完点大字能听读音。<br>答对 6 个过关，全对得三星。</div>')+
     '</div>';
   $("app").innerHTML=h;
   $("start").onclick=function(){sfx.click();renderLevel(nx);};
@@ -188,6 +201,7 @@ function layout(k){ // returns [cols,rows,positions]
 }
 
 function renderLevel(i){
+  if(S.g==="bushou") return renderQuiz(i);
   var tok=++st.token;
   $("app").innerHTML='<div class="loading">正在载入第 '+meta(i).n+' 关…</div>';
   getLevel(S.g,i).then(function(L){ if(tok===st.token) drawLevel(i,L); })
@@ -379,6 +393,110 @@ function openWin(){
   $("rn").onclick=function(){sfx.click();m.classList.remove("open");renderLevel((st.idx+1)%list().length);};
 }
 
+
+/* ---------- 后花园：部首与结构挑战 ---------- */
+var STRUCTS=["独体","左右","上下","左中右","上中下","半包围","全包围","品字形"];
+var SICON={ /* 结构示意小图 */
+  "独体":'<rect x="4" y="4" width="16" height="16" rx="1.5"/>',
+  "左右":'<rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/>',
+  "上下":'<rect x="4" y="3" width="16" height="8" rx="1.5"/><rect x="4" y="13" width="16" height="8" rx="1.5"/>',
+  "左中右":'<rect x="2" y="4" width="5.5" height="16" rx="1"/><rect x="9.25" y="4" width="5.5" height="16" rx="1"/><rect x="16.5" y="4" width="5.5" height="16" rx="1"/>',
+  "上中下":'<rect x="4" y="2" width="16" height="5.5" rx="1"/><rect x="4" y="9.25" width="16" height="5.5" rx="1"/><rect x="4" y="16.5" width="16" height="5.5" rx="1"/>',
+  "半包围":'<path d="M4 20V4h16" fill="none"/><rect x="9" y="9" width="11" height="11" rx="1.5"/>',
+  "全包围":'<rect x="3" y="3" width="18" height="18" rx="1.5"/><rect x="8" y="8" width="8" height="8" rx="1"/>',
+  "品字形":'<rect x="7" y="3" width="10" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>'
+};
+var qz={};
+function qOf(x){ return {c:x[0],st:x[1],sub:x[2],r:x[3],nm:x[4],opts:(typeof x[5]==="string"?Array.from(x[5]):x[5]),py:x[6],au:x[7],m:x[8]}; }
+function renderQuiz(i){
+  stopTimer(); var L=BS.levels[i]; D().cur=i; save();
+  var qs=L[1].map(qOf);
+  qz={idx:i,n:i+1,qs:qs,k:0,ok:0,wrong:[],res:[],step:1,done:false};
+  sfx.start(); AU.line(tier(i),300);
+  drawQuiz();
+}
+function quizHdr(){
+  return '<div class="hdr"><div class="gear" id="gear" aria-label="设置">'+GEAR+'</div>'+
+    '<div class="gift" id="gift" aria-label="每日礼包"><div class="box">'+ICON.gift+'</div><div class="cd" id="cd">--:--:--</div></div>'+
+    '<div class="titlebox"><div class="lvl">第'+qz.n+'关</div><div class="goal">'+tier(qz.idx)+' · 第 <b>'+(qz.k+1)+'</b>/'+qz.qs.length+' 题</div></div></div>'+
+    coinHTML().replace('class="coin"','class="coin" style="position:absolute;right:14px;top:14px"');
+}
+function drawQuiz(){
+  var q=qz.qs[qz.k]; qz.step=1; qz.ans1=null; qz.ans2=null;
+  var dots=qz.qs.map(function(_,j){ var c=j<qz.k?(qz.res[j]?"ok":"no"):(j===qz.k?"cur":""); return '<i class="'+c+'"></i>'; }).join("");
+  var h=quizHdr()+
+    '<div class="qdots" aria-hidden="true">'+dots+'</div>'+
+    '<div class="qzi"><div class="tzg kai" id="qzi" aria-label="'+esc(q.c)+'"><span>'+esc(q.c)+'</span></div><div class="qpy" id="qpy"></div></div>'+
+    '<div class="qstep" id="qs1"><div class="qh"><em>1</em>这个字是什么结构？</div><div class="sgrid">'+
+      STRUCTS.map(function(t){return '<div class="sopt" data-v="'+t+'"><svg viewBox="0 0 24 24" aria-hidden="true">'+SICON[t]+'</svg><span>'+t+'</span></div>';}).join("")+'</div></div>'+
+    '<div class="qstep wait" id="qs2"><div class="qh"><em>2</em>它的部首是哪一个？</div><div class="rgrid">'+
+      q.opts.map(function(o){return '<div class="ropt kai" data-v="'+esc(o)+'">'+esc(o)+'</div>';}).join("")+'</div></div>'+
+    '<div class="qinfo" id="qinfo"></div>'+
+    '<div class="acts qacts"><div class="btn primary off" id="qnext">下一题</div></div>';
+  $("app").innerHTML=h;
+  $("gear").onclick=openSettings; $("gift").onclick=claimGift; startTimer();
+  document.querySelectorAll(".sopt").forEach(function(el){ el.onclick=function(){ pickStruct(el); }; });
+  document.querySelectorAll(".ropt").forEach(function(el){ el.onclick=function(){ pickRad(el); }; });
+  $("qzi").onclick=function(){ if(qz.step<3){ toast("答完两步就能听读音"); return; } sayQ(q); };
+  $("qnext").onclick=function(){ if(qz.step<3) return; sfx.click(); nextQ(); };
+  AU.pre("audio/"+q.au+".mp3");
+}
+function sayQ(q){ var el=$("qzi"); el.classList.remove("say"); void el.offsetWidth; el.classList.add("say"); AU.zi({au:q.au,c:q.c},0); }
+function pickStruct(el){
+  if(qz.step!==1) return; var q=qz.qs[qz.k], v=el.getAttribute("data-v"), ok=v===q.st;
+  qz.ans1=ok; qz.step=2;
+  document.querySelectorAll(".sopt").forEach(function(o){ var t=o.getAttribute("data-v");
+    if(t===q.st) o.classList.add("right"); else if(o===el) o.classList.add("wrong"); else o.classList.add("dim"); });
+  if(ok) sfx.ok(); else { sfx.no(); }
+  $("qs1").classList.add("done"); $("qs2").classList.remove("wait");
+  $("qs1").querySelector(".qh").insertAdjacentHTML("beforeend",'<b class="'+(ok?"ok":"no")+'">'+(ok?"✓ ":"✗ ")+q.st+(q.sub?"（"+q.sub+"）":"")+'</b>');
+}
+function pickRad(el){
+  if(qz.step!==2){ if(qz.step===1) toast("先选结构"); return; }
+  var q=qz.qs[qz.k], v=el.getAttribute("data-v"), ok=v===q.r;
+  qz.ans2=ok; qz.step=3;
+  document.querySelectorAll(".ropt").forEach(function(o){ var t=o.getAttribute("data-v");
+    if(t===q.r) o.classList.add("right"); else if(o===el) o.classList.add("wrong"); else o.classList.add("dim"); });
+  var all=qz.ans1&&qz.ans2; qz.res=qz.res||[]; qz.res[qz.k]=all; var dt=document.querySelectorAll(".qdots i")[qz.k]; if(dt) dt.className=all?"ok":"no";
+  var d=D();
+  if(all){ qz.ok++; d.got[q.c]=1; d.coins+=FIND_COIN; refreshCoin(); sfx.ok(); setTimeout(sfx.coin,250); }
+  else { sfx.no(); qz.wrong.push(q); }
+  save();
+  $("qs2").classList.add("done");
+  $("qpy").textContent=q.py;
+  $("qinfo").innerHTML='<div><span class="lab">部首</span><b class="kai">'+esc(q.r)+'</b>（'+esc(q.nm)+'）'+(q.r!==q.m&&q.r!=="阝"?'<small>归「'+esc(q.m)+'」部</small>':'')+'</div>'+
+    '<div><span class="lab">结构</span>'+q.st+(q.sub?'（'+q.sub+'）':'')+'</div><div class="tapme">点上面的大字听读音</div>';
+  $("qinfo").classList.add("show");
+  $("qnext").classList.remove("off"); $("qnext").textContent=qz.k+1<qz.qs.length?"下一题":"看成绩";
+  if(S.voice) AU.zi({au:q.au,c:q.c},350);
+}
+function nextQ(){
+  if(qz.k+1<qz.qs.length){ qz.k++; drawQuiz(); return; }
+  quizEnd();
+}
+function quizEnd(){
+  var n=qz.qs.length, ok=qz.ok, pass=ok>=Math.ceil(n*0.6), stars=ok===n?3:(ok>=Math.ceil(n*0.8)?2:(pass?1:0));
+  var rk=ok===n?"无懈可击":(ok>=Math.ceil(n*0.8)?"游刃有余":(ok>=Math.ceil(n*0.7)?"略有小成":(pass?"勉强过关":"再想想")));
+  var d=D(), key=qz.n, first=pass&&!d.cleared[key];
+  if(pass){ d.cleared[key]=1; d.stars[key]=Math.max(d.stars[key]||0,stars); }
+  d.best[key]=Math.max(d.best[key]||0,ok); if(first) d.coins+=CLEAR_COIN; save(); refreshCoin();
+  var st3=""; for(var k=0;k<3;k++) st3+='<span class="'+(k<stars?"on":"")+'">★</span>';
+  var m=$("mask");
+  m.innerHTML='<div class="card"><div class="ribbon">'+(pass?"恭喜过关":"再接再厉")+'</div>'+
+    '<div class="big kai">'+ok+'<small>/'+n+'</small></div><div class="meta">后花园 第 '+qz.n+' 关 · '+tier(qz.idx)+' · 两步都对才算答对</div>'+
+    '<div class="stars">'+st3+'</div><div class="rank">'+(pass?rk:"差一点")+'</div>'+
+    (qz.wrong.length?'<div class="found review"><div class="rt">再看看这几个：</div>'+qz.wrong.map(function(q){
+      return '<div class="rv"><i class="say1 kai" data-c="'+esc(q.c)+'">'+esc(q.c)+'</i><span>'+q.st+(q.sub?'（'+q.sub+'）':'')+' · 部首 <b class="kai">'+esc(q.r)+'</b> '+esc(q.nm)+'</span></div>';}).join("")+'</div>'
+      :'<div class="found">全部答对，太棒了！</div>')+
+    '<div class="reward">'+(first?'过关奖励：金币 +'+CLEAR_COIN+' · ':'')+'答对 '+ok+' 个 · 金币 +'+(ok*FIND_COIN)+'</div>'+
+    '<div class="acts"><div class="btn" id="rh">返回首页</div><div class="btn" id="rr">再来一次</div>'+(pass?'<div class="btn primary" id="rn">下一关</div>':'')+'</div></div>';
+  m.classList.add("open");
+  m.querySelectorAll(".say1").forEach(function(el){ el.onclick=function(){ var c=el.getAttribute("data-c"); var q=qz.wrong.filter(function(x){return x.c===c;})[0]; if(q) AU.zi({au:q.au,c:q.c},0); }; });
+  if(pass){ sfx.win(); AU.line("恭喜过关",700).then(function(){ AU.line(rk,150); }); } else { sfx.no(); AU.line("加油",500); }
+  $("rh").onclick=function(){sfx.click();m.classList.remove("open");renderHome();};
+  $("rr").onclick=function(){sfx.click();m.classList.remove("open");renderQuiz(qz.idx);};
+  if($("rn")) $("rn").onclick=function(){sfx.click();m.classList.remove("open");renderQuiz((qz.idx+1)%BS.levels.length);};
+}
 /* ---------- gift / timer ---------- */
 function fmt(ms){var s=Math.max(0,Math.ceil(ms/1000));var h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
   return [h,m,x].map(function(v){return String(v).padStart(2,"0");}).join(":");}
@@ -419,7 +537,7 @@ function openSettings(){
 function openPicker(){
   sfx.click();
   var m=$("mask"), L=list(), d=D(), h='<div class="picker"><div class="h"><b>'+GNAME[S.g]+' · 选关</b><span class="x" id="px" aria-label="关闭">'+ICON.close+'</span></div>';
-  TIERS.forEach(function(t){
+  tierList().forEach(function(t){
     var items=L.map(function(_,i){return i;}).filter(function(i){return tier(i)===t;});
     if(!items.length) return;
     var done=items.filter(isCleared).length;
@@ -441,5 +559,5 @@ function openPicker(){
 }
 
 load(); renderHome();
-window.__pcw={AU:AU,S:S,st:st,IDX:IDX,getLevel:getLevel,renderLevel:renderLevel,submit:submit,useHint:useHint,renderHome:renderHome};
+window.__pcw={AU:AU,S:S,st:st,IDX:IDX,BS:BS,qz:function(){return qz;},renderQuiz:renderQuiz,getLevel:getLevel,renderLevel:renderLevel,submit:submit,useHint:useHint,renderHome:renderHome};
 })();
