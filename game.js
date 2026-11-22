@@ -1,4 +1,4 @@
-/* 天天拼词园 · 网页复刻版 v4 —— 字中找字（主园 + 后花园） */
+/* 天天拼词园 · 网页复刻版 v5 —— 字中找字（主园 + 后花园） */
 (function(){
 "use strict";
 var KEY="pinciwang.v1";
@@ -118,6 +118,18 @@ function unitWord(){return S.g==="bonus"?"个偏旁部件":"个常用字";}
 function stats(g){var d=S.G[g],L=IDX[g],got=0,cl=0,stars=0;
   L.forEach(function(x){var f=d.found[x[0]];got+=f?Math.min(f.length,x[2]):0; if(d.cleared[x[0]])cl++; stars+=d.stars[x[0]]||0;});
   return {got:got,cl:cl,stars:stars,total:L.length};}
+var ICON={ /* v5：统一线性 SVG 图标（替代 emoji） */
+  music:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l11-2v13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" fill="currentColor"/><circle cx="17" cy="16" r="3" fill="currentColor"/></svg>',
+  gift:'<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="20" width="34" height="22" rx="3" fill="#d9573f"/><rect x="5" y="13" width="38" height="9" rx="2.5" fill="#e8694f"/><rect x="21" y="13" width="6" height="29" fill="#f4c35a"/><path d="M24 13c-3-7-12-9-12-3 0 3 5 3 12 3zM24 13c3-7 12-9 12-3 0 3-5 3-12 3z" fill="none" stroke="#f4c35a" stroke-width="3" stroke-linejoin="round"/><rect x="7" y="22" width="34" height="3" fill="rgba(0,0,0,.12)"/></svg>',
+  close:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  lock:'<svg class="lk" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>'
+};
+/* v5 无障碍：可点元素补 role/tabindex，回车/空格可触发 */
+function a11y(root){ (root||document).querySelectorAll(".bigbtn,.btn,.gtab,.pitem,.switch,.mus,.gear,.gift,.x,.slot.speak,.say1").forEach(function(el){
+  if(!el.hasAttribute("role")){el.setAttribute("role",el.classList.contains("switch")?"switch":"button");el.tabIndex=0;}
+  if(el.classList.contains("switch")) el.setAttribute("aria-checked",el.classList.contains("on")?"true":"false"); }); }
+document.addEventListener("keydown",function(e){ var t=e.target; if((e.key==="Enter"||e.key===" ")&&t&&t.getAttribute&&/^(button|switch)$/.test(t.getAttribute("role")||"")){ e.preventDefault(); t.click(); } });
+new MutationObserver(function(){ a11y(); }).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["class"]});
 var GEAR='<svg viewBox="0 0 48 48"><defs><radialGradient id="gg" cx="40%" cy="35%"><stop offset="0" stop-color="#d9b98b"/><stop offset="1" stop-color="#8b6a43"/></radialGradient></defs>'+
   '<path d="M24 2c4 0 5 4 8 5s7-1 9 2-1 6 0 9 5 4 5 6-4 4-5 6 2 6 0 9-6 1-9 2-4 5-8 5-5-4-8-5-7 1-9-2 1-6 0-9-5-4-5-6 4-4 5-6-2-6 0-9 6-1 9-2 4-5 8-5z" fill="url(#gg)" stroke="#5e4428" stroke-width="1.5"/>'+
   '<circle cx="24" cy="24" r="11" fill="#f6ead2" stroke="#5e4428" stroke-width="1.5"/>'+
@@ -143,7 +155,7 @@ function renderHome(){
   stopTimer();
   var nx=firstOpen(), L=list(), allDone=L.every(function(_,i){return isCleared(i);}), sm=stats(S.g);
   var giftReady=D().gift+GIFT_MS<=Date.now();
-  var h='<div class="home"><div class="topline"><span class="mus'+(S.music?" on":"")+'" id="mus" title="背景音乐">♪</span>'+coinHTML()+'</div>'+
+  var h='<div class="home"><div class="topline"><span class="mus'+(S.music?" on":"")+'" id="mus" title="背景音乐" aria-label="背景音乐">'+ICON.music+'</span>'+coinHTML()+'</div>'+
     '<div class="logo"><div class="ink-blob"></div><h1>天天拼词园</h1><div class="seal">字中找字</div></div>'+
     '<div class="slogan">一字拆出千万意</div>'+
     '<div class="gtabs">'+["main","bonus"].map(function(g){return '<div class="gtab'+(S.g===g?" on":"")+'" data-g="'+g+'">'+GNAME[g]+'<small>'+IDX[g].length+' 关</small></div>';}).join("")+'</div>'+
@@ -196,8 +208,8 @@ function drawLevel(i,L){
     svg+='</g>';
   });
   svg+='</svg>';
-  var h='<div class="hdr"><div class="gear" id="gear">'+GEAR+'</div>'+
-        '<div class="gift" id="gift"><div class="box">🎁</div><div class="cd" id="cd">--:--:--</div></div>'+
+  var h='<div class="hdr"><div class="gear" id="gear" aria-label="设置">'+GEAR+'</div>'+
+        '<div class="gift" id="gift" aria-label="每日礼包"><div class="box">'+ICON.gift+'</div><div class="cd" id="cd">--:--:--</div></div>'+
         '<div class="titlebox"><div class="lvl">'+(S.g==="bonus"?'<span class="gtag">后花园</span>':'')+'第'+L.n+'关</div><div class="goal">找出<b>'+L.a.length+'</b>'+unitWord()+'</div></div></div>'+
         coinHTML().replace('class="coin"','class="coin" style="position:absolute;right:14px;top:14px"')+
         '<div class="slots kai'+(S.g==="bonus"?" bonus":"")+'" id="slots"></div>'+
@@ -206,7 +218,7 @@ function drawLevel(i,L){
         '<div class="acts"><div class="btn" id="hint">提示<span class="cost">-'+HINT_COST+'</span></div>'+
         '<div class="btn" id="clear">清空</div><div class="btn primary off" id="submit">提交</div></div>';
   $("app").innerHTML=h;
-  $("board").style.height=(Math.min(window.innerWidth*0.86,360)*(H+2*pad)/(W+2*pad))+"px";
+  var bw=Math.max(260,Math.min(window.innerWidth*0.9,410,window.innerHeight-330)); $("board").style.width=bw+"px"; $("board").style.height=(bw*(H+2*pad)/(W+2*pad))+"px";
   $("gear").onclick=openSettings;
   $("gift").onclick=claimGift;
   $("clear").onclick=function(){st.sel.clear();paint();sfx.click();};
@@ -406,7 +418,7 @@ function openSettings(){
 }
 function openPicker(){
   sfx.click();
-  var m=$("mask"), L=list(), d=D(), h='<div class="picker"><div class="h"><b>'+GNAME[S.g]+' · 选关</b><span class="x" id="px">✕</span></div>';
+  var m=$("mask"), L=list(), d=D(), h='<div class="picker"><div class="h"><b>'+GNAME[S.g]+' · 选关</b><span class="x" id="px" aria-label="关闭">'+ICON.close+'</span></div>';
   TIERS.forEach(function(t){
     var items=L.map(function(_,i){return i;}).filter(function(i){return tier(i)===t;});
     if(!items.length) return;
@@ -415,7 +427,7 @@ function openPicker(){
     items.forEach(function(i){var x=L[i],lk=!unlocked(i),cl=isCleared(i),s=d.stars[x[0]]||0;
       var show=cl||S.reveal;
       h+='<div class="pitem'+(cl?" done":"")+(lk?" lock":"")+(i===d.cur?" cur":"")+(x[1].length>1&&show?" long":"")+'" data-i="'+i+'">'+
-        '<span class="c kai">'+(lk&&!S.reveal?"🔒":(show?esc(x[1]):"？"))+'</span><span>'+x[0]+'</span>'+
+        '<span class="c kai">'+(lk&&!S.reveal?ICON.lock:(show?esc(x[1]):"？"))+'</span><span>'+x[0]+'</span>'+
         (cl?'<span class="ps">'+"★★★".slice(0,s)+'</span>':'')+'</div>';});
     h+='</div>';
   });

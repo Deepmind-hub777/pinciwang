@@ -1,4 +1,5 @@
-@font-face{font-family:"Brush";src:url("fonts/brush.woff2?v=5") format("woff2");font-display:swap}
+/* 书法体：钟齐志莽行书 Zhi Mang Xing（SIL OFL 1.1，见 fonts/OFL-ZhiMangXing.txt），已按页面用字子集化 */
+@font-face{font-family:"Brush";src:url("fonts/callig.woff2?v=5") format("woff2");font-display:swap}
 :root{
   --bg1:#f4f1e4; --bg2:#e7efe6; --paper:#fbf8ee; --card:#fffdf6;
   --ink:#2a2119; --ink2:#5d5040; --ink3:#9a8b74; --line:#e0cfae;
@@ -172,3 +173,119 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;
 .picker .sec em{font-style:normal;font-size:11px;color:var(--ink3);order:3}
 .pitem .ps{position:absolute;bottom:1px;font-size:8px;color:#f0a920;letter-spacing:-1px}
 .pitem.done::after{content:none}
+
+/* ================= v5：书法标题 + 正文字体 + UI 细修（参照 UI UX Pro Max 清单） ================= */
+:root{
+  --font-ui:"PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans SC","Source Han Sans SC","Noto Sans CJK SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  --font-callig:"Brush","STXingkai","Xingkai SC","KaiTi",serif;
+  --font-kai:"Kaiti SC","STKaiti","KaiTi","LXGW WenKai","Noto Serif CJK SC","Source Han Serif SC","Songti SC",serif;
+  --ink3:#7a6b55;          /* 次要文字：对比度 ≥4.5:1 */
+  --fs-xs:12px; --fs-sm:13px; --fs-md:15px; --fs-lg:17px;
+  --tap:44px; --ease:cubic-bezier(.2,.7,.3,1);
+}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{font-family:var(--font-ui);touch-action:manipulation;font-feature-settings:"tnum" 0}
+#app{padding:calc(12px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left))}
+.kai{font-family:var(--font-kai)}
+.brush,.logo h1,.logo .seal,.bigbtn,.gtab,.titlebox .lvl,.card .ribbon,.rank,.card h3,.picker .h b,.btn,.picker .sec{font-family:var(--font-callig);font-weight:400}
+.bigbtn small,.gtab small,.btn .cost,.gtag,.slots.bonus .py,.picker .sec em{font-family:var(--font-ui)}
+[role=button],[role=switch]{cursor:pointer}
+:focus{outline:none}
+:focus-visible{outline:3px solid rgba(200,64,47,.55);outline-offset:3px;border-radius:12px}
+
+/* 首页 */
+.logo{margin-top:clamp(28px,7vh,72px)}
+.logo h1{font-size:clamp(50px,15.5vw,70px);letter-spacing:.04em;color:#1b1510;text-shadow:0 2px 0 rgba(255,255,255,.6),2px 4px 10px rgba(60,40,20,.12)}
+.logo .seal{font-size:14px;width:26px;right:-22px;bottom:-2px;box-shadow:0 2px 0 rgba(120,30,20,.35)}
+.slogan{font-size:var(--fs-sm);letter-spacing:.4em;color:var(--ink2);margin-top:14px}
+.gtabs{width:min(84%,340px);margin-top:clamp(18px,4.5vh,40px);border-radius:28px;padding:4px}
+.gtab{min-height:var(--tap);display:flex;flex-direction:column;justify-content:center;font-size:24px;padding:4px 0;border-radius:24px;transition:background .2s var(--ease),color .2s var(--ease)}
+.gtab small{font-size:var(--fs-xs);color:#8a7552;margin-top:1px}
+.gdesc{font-size:var(--fs-sm);margin-top:10px;text-align:center;padding:0 8px}
+.home .stats{width:min(84%,340px);border-radius:12px;margin-top:12px}
+.home .stats div{padding:10px 2px}
+.home .stats b{font-size:20px;font-variant-numeric:tabular-nums}
+.home .stats span{font-size:var(--fs-xs);color:var(--ink3);letter-spacing:.12em}
+.home .menu{width:min(84%,340px);margin-top:clamp(18px,4vh,36px);gap:16px}
+.bigbtn{font-size:30px;line-height:1.2;padding:12px 0 10px;min-height:60px;letter-spacing:.08em;transition:transform .12s var(--ease),box-shadow .12s var(--ease),filter .2s}
+.bigbtn small{font-size:var(--fs-xs);letter-spacing:.06em;margin-top:2px}
+@media (hover:hover){.bigbtn:hover,.btn:hover{filter:brightness(1.04)}.gtab:not(.on):hover{background:rgba(233,196,119,.25)}}
+.howto{font-size:var(--fs-sm);line-height:1.85;border-radius:12px;padding:14px 16px;margin-top:28px}
+.mus,.coin{min-height:36px}
+.mus{width:var(--tap);height:var(--tap);font-size:0}
+.mus svg{width:20px;height:20px}
+.coin{font-size:15px;padding:4px 14px 4px 5px}
+.coin i{width:24px;height:24px;font-size:12px}
+
+/* 游戏页 */
+.titlebox .lvl{font-size:36px;letter-spacing:.06em}
+.titlebox .goal{font-size:var(--fs-sm)}
+.gift .box{line-height:0;padding-top:2px}
+.gift .box svg{width:40px;height:40px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.18))}
+.gift .cd{font-size:11px;font-family:var(--font-ui)}
+.slot .py{font-size:var(--fs-sm)}
+.slots.bonus .py{font-size:12px}
+.tip{font-size:var(--fs-sm)}
+.acts{gap:12px}
+.btn{min-height:var(--tap);display:flex;align-items:center;justify-content:center;font-size:20px;padding:6px 0;letter-spacing:.12em;transition:transform .1s var(--ease),box-shadow .1s var(--ease),filter .2s,opacity .2s}
+.btn .cost{font-size:var(--fs-xs);letter-spacing:0;margin-left:4px}
+.btn.primary.off{cursor:default}
+.toast{font-size:var(--fs-md);padding:11px 20px}
+
+/* 弹窗 */
+.card{border-radius:18px}
+.card .ribbon{font-size:28px;letter-spacing:.12em}
+.rank{font-size:34px;letter-spacing:.1em}
+.card h3{font-size:32px;letter-spacing:.2em}
+.card .meta{font-size:var(--fs-xs)}
+.card .reward{font-size:var(--fs-sm)}
+.card .found{font-size:16px}
+.setrow{font-size:var(--fs-md);min-height:56px}
+.setrow .sub{font-size:var(--fs-xs)}
+.switch{width:52px;height:30px;border-radius:15px;flex:0 0 52px;margin-left:12px}
+.switch::after{width:24px;height:24px}
+.switch.on::after{left:25px}
+.note{font-size:var(--fs-xs)}
+.card .btn#sr{font-family:var(--font-ui);font-size:var(--fs-sm)!important;letter-spacing:.04em}
+
+/* 选关 */
+.picker{border-radius:18px;padding:16px 16px 20px}
+.picker .h{position:sticky;top:-16px;background:var(--card);z-index:2;padding:8px 0 6px;margin:-8px 0 4px}
+.picker .h b{font-size:30px;letter-spacing:.08em}
+.picker .x{width:var(--tap);height:var(--tap);display:inline-flex;align-items:center;justify-content:center;margin-right:-8px;border-radius:50%}
+.picker .x svg{width:22px;height:22px}
+.picker .sec{font-size:20px;color:var(--bronze);letter-spacing:.12em;margin:16px 0 10px}
+.picker .sec em{font-size:var(--fs-xs)}
+.prow{gap:8px}
+.pitem{font-size:var(--fs-xs);min-height:var(--tap);border-radius:10px}
+.pitem .c{font-size:22px}
+.pitem .c svg.lk{width:16px;height:16px;color:#c3b59c;display:block;margin:3px auto}
+.pitem .ps{font-size:10px;bottom:0}
+
+/* 宽屏：居中纸卡 */
+@media (min-width:700px){
+  body{align-items:flex-start;padding:24px 0}
+  #app{max-width:460px;background:rgba(255,253,246,.55);border-radius:24px;box-shadow:0 0 0 1px rgba(198,164,118,.25),0 24px 60px rgba(80,60,30,.12);min-height:calc(100vh - 48px)}
+  .home{min-height:calc(100vh - 96px)}
+}
+@media (max-width:370px){
+  .bigbtn{font-size:27px}
+  .gtab{font-size:22px}
+  .slot{width:42px}.slot .cell{width:40px;height:40px;font-size:27px}
+  .titlebox .lvl{font-size:32px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+.logo .seal{width:auto;padding:5px 4px;font-size:13px;line-height:1.05;letter-spacing:1px;white-space:nowrap;right:-26px}
+.mus.on{animation:none}
+.btn{font-family:var(--font-kai);font-weight:700;letter-spacing:.2em;font-size:18px}
+.btn .cost{font-weight:400}
+#board{width:min(90vw,410px)}
+.picker .sec{font-size:23px}
+.bigbtn{font-size:33px}
+.gtab{font-size:26px}
+.card .btn{font-family:var(--font-callig);font-weight:400;font-size:22px;letter-spacing:.14em}
+.card .btn#sr{font-family:var(--font-ui);font-weight:400}
+@media (max-width:370px){.bigbtn{font-size:30px}.gtab{font-size:24px}}
