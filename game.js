@@ -2,7 +2,7 @@
 (function(){
 "use strict";
 var KEY="pinciwang.v1";
-var HINT_COST=30, FIND_COIN=2, CLEAR_COIN=20, GIFT_COIN=60, GIFT_MS=4*3600*1000;
+var HINT_COST=30, FIND_COIN=2, XTRA_COIN=2, CLEAR_COIN=20, GIFT_COIN=60, GIFT_MS=4*3600*1000;
 var IDX=window.PCW_INDEX; /* {main:[[n,t,count,strokes]...]} */
 var BS=window.PCW_BUSHOU||{tiers:[],levels:[]}; /* 后花园题库：levels=[[tier,[[字,结构,细类,部首,名称,选项,拼音,读音,主部首]...]]...] */
 IDX.bushou=BS.levels.map(function(L,i){return [i+1,L[1][0][0],L[1].length,L[0]];});
@@ -116,6 +116,7 @@ function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").repl
 function list(){return IDX[S.g];}
 function meta(i){var x=list()[i];return {n:x[0],t:x[1],cnt:x[2],sk:x[3]};}
 function foundOf(n){var d=D();if(!d.found[n])d.found[n]=[];return d.found[n];}
+function xfOf(n){var d=D();if(!d.xf)d.xf={};if(!d.xf[n])d.xf[n]=[];return d.xf[n];} /* v9 额外字（不计入过关） */
 function hintedOf(n){var d=D();if(!d.hints[n])d.hints[n]=[];return d.hints[n];}
 function isCleared(i){return !!D().cleared[list()[i][0]];}
 function unlocked(i){return i===0||isCleared(i-1)||isCleared(i)||(S.g==="bushou"&&IDX.bushou[i][3]!==IDX.bushou[i-1][3]);} /* 后花园：每一档的第一关都开放 */
@@ -157,7 +158,7 @@ function getLevel(g,i){
   var start=Math.floor(i/CHUNK)*CHUNK, key=g+start;
   return new Promise(function(res,rej){
     var first=!waiting[key]; (waiting[key]=waiting[key]||[]).push(function(){res(CH[g][i]);});
-    if(first){ var sc=document.createElement("script"); sc.src="data/"+g+"-"+String(start/CHUNK).padStart(2,"0")+".js?v=4";
+    if(first){ var sc=document.createElement("script"); sc.src="data/"+g+"-"+String(start/CHUNK).padStart(2,"0")+".js?v=5";
       sc.onerror=function(){ delete waiting[key]; rej(new Error("关卡数据加载失败")); }; document.body.appendChild(sc); }
   });
 }
@@ -255,6 +256,7 @@ function drawLevel(i,L){
         '<div class="titlebox"><div class="lvl">'+(S.g==="bonus"?'<span class="gtag">后花园</span>':'')+'第'+L.n+'关</div><div class="goal">找出<b>'+L.a.length+'</b>'+unitWord()+'</div></div></div>'+
         coinHTML().replace('class="coin"','class="coin" style="position:absolute;right:14px;top:14px"')+
         '<div class="play" id="play"><div class="slots kai'+(S.g==="bonus"?" bonus":"")+'" id="slots"></div>'+
+        '<div class="xtra" id="xtra"></div>'+
         '<div class="stage" id="stage">'+svg+'</div>'+
         '<div class="tip" id="tip"></div>'+
         '<div class="acts"><div class="btn" id="hint">提示<span class="cost">-'+HINT_COST+'</span></div>'+
@@ -267,12 +269,13 @@ function drawLevel(i,L){
   $("selall").onclick=selectAll;
   $("hint").onclick=useHint;
   $("submit").onclick=submit;
-  renderSlots(); fitBoard(); buildGeom(); paint(); bindPointer(); startTimer();
+  renderSlots(); renderXtra(); fitBoard(); buildGeom(); paint(); bindPointer(); startTimer();
   st.streak=0; st.wrongRun=0; AU.preloadLevel(L); sfx.start(); AU.line(tier(i),350);
 }
 /* 存档兼容：答案表更新后，去掉已不在本关答案里的旧记录；已通关与星级保持不变 */
 function pruneSave(L){
   var ok={}; L.a.forEach(function(a){ok[a.c]=1;}); var d=D();
+  if(d.xf&&d.xf[L.n]){ var xo={}; (L.x||[]).forEach(function(a){xo[a.c]=1;}); d.xf[L.n]=d.xf[L.n].filter(function(c,j,arr){return xo[c]&&arr.indexOf(c)===j;}); }
   ["found","hints"].forEach(function(k){ var f=d[k][L.n]; if(f){ var g=f.filter(function(c,j){return ok[c]&&f.indexOf(c)===j;}); if(g.length!==f.length) d[k][L.n]=g; } });
 }
 function buildGeom(){
@@ -370,6 +373,16 @@ function submit(){
   if(st.sel.size===0){toast("先描黑几笔再提交");sfx.no();return;}
   var L=st.L, f=foundOf(L.n), hit=null, dup=false;
   L.a.forEach(function(a){ a.k.forEach(function(c){ if(same(st.sel,c)){ if(f.indexOf(a.c)>=0) dup=true; else if(!hit) hit=a; } }); });
+  var xf=xfOf(L.n), xh=null;
+  if(!hit&&L.x){ L.x.forEach(function(a){ a.k.forEach(function(c){ if(same(st.sel,c)){ if(xf.indexOf(a.c)>=0) dup=true; else if(!xh) xh=a; } }); }); }
+  if(xh){ /* v9：看得出来的常用字都认——额外字给金币，不影响过关 */
+    xf.push(xh.c); D().coins+=XTRA_COIN; save();
+    sfx.ok(); toast("额外发现「"+xh.c+"」！金币 +"+XTRA_COIN);
+    st.streak=(st.streak||0)+1; st.wrongRun=0;
+    if(S.voice) AU.zi(xh,380);
+    flash(Array.from(st.sel)); st.sel.clear(); paint(); renderXtra(xh.c); refreshCoin();
+    return;
+  }
   if(hit){
     f.push(hit.c); D().coins+=FIND_COIN; save();
     sfx.ok(); toast("找到「"+hit.c+"」"+(S.g==="bonus"?" "+hit.nm:"")+"！金币 +"+FIND_COIN);
@@ -395,6 +408,13 @@ function flash(ids){
 function shake(){
   var b=st.svg, n=0; var iv=setInterval(function(){n++;b.style.transform="translateX("+(n%2?6:-6)+"px)";
     if(n>5){clearInterval(iv);b.style.transform="";}},45);
+}
+function renderXtra(newc){
+  var L=st.L, el=$("xtra"); if(!el) return;
+  if(!L.x||!L.x.length){ el.style.display="none"; return; }
+  var xf=xfOf(L.n).filter(function(c){ return L.x.some(function(a){return a.c===c;}); });
+  el.innerHTML='<span class="xl">额外字 '+xf.length+'/'+L.x.length+'</span>'+(xf.length?xf.map(function(c){return '<i class="xc kai'+(c===newc?" new":"")+'" data-c="'+esc(c)+'">'+esc(c)+'</i>';}).join(""):'<span class="xh">还藏着别的常用字，找到有金币（不找也能过关）</span>');
+  el.querySelectorAll(".xc").forEach(function(e){ e.onclick=function(){ var a=L.x.filter(function(x){return x.c===e.getAttribute("data-c");})[0]; if(a) AU.zi(a,0); }; });
 }
 function useHint(){
   var L=st.L, f=foundOf(L.n), hs=hintedOf(L.n);
@@ -427,10 +447,11 @@ function openWin(){
     '<div class="big kai">'+esc(L.t)+'</div><div class="meta">'+GNAME[S.g]+' 第 '+L.n+' 关 · 共 '+strokes+' 笔 · '+L.a.length+' 个</div>'+
     '<div class="stars">'+stars+'</div><div class="rank">'+r[1]+'</div>'+
     '<div class="found kai">共找出 '+L.a.length+' 个：<br><b>'+L.a.map(function(a){return '<i class="say1" data-c="'+esc(a.c)+'">'+esc(a.c)+'</i>';}).join("　")+'</b></div>'+
+    (xfOf(L.n).length?'<div class="found kai xfound">额外发现：'+xfOf(L.n).map(function(c){return '<i class="say1" data-c="'+esc(c)+'">'+esc(c)+'</i>';}).join("　")+'</div>':'')+
     '<div class="reward">'+(first?'过关奖励：金币 +'+CLEAR_COIN+' · ':'')+'提示 '+hintedOf(L.n).length+' 次 · 失误 '+(d.miss[L.n]||0)+' 次</div>'+
     '<div class="acts"><div class="btn" id="rh">返回首页</div><div class="btn primary" id="rn">下一关</div></div></div>';
   m.classList.add("open");
-  m.querySelectorAll(".say1").forEach(function(el){ el.onclick=function(){ var c=el.getAttribute("data-c"); var a=L.a.filter(function(x){return x.c===c;})[0]; if(a) AU.zi(a,0); }; });
+  m.querySelectorAll(".say1").forEach(function(el){ el.onclick=function(){ var c=el.getAttribute("data-c"); var a=L.a.concat(L.x||[]).filter(function(x){return x.c===c;})[0]; if(a) AU.zi(a,0); }; });
   AU.line("恭喜过关",900).then(function(){ AU.line(r[1],150); });
   $("rh").onclick=function(){sfx.click();m.classList.remove("open");renderHome();};
   $("rn").onclick=function(){sfx.click();m.classList.remove("open");renderLevel((st.idx+1)%list().length);};

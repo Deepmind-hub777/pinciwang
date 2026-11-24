@@ -454,11 +454,12 @@ body{font-family:var(--font-ui);touch-action:manipulation;font-feature-settings:
   #app{max-width:min(1240px,100%)}
   /* 主园：左棋盘，右答案格 + 按钮 */
   .play{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,1fr);column-gap:clamp(20px,3vw,44px);
-    grid-template-rows:1fr auto auto auto 1fr;grid-template-areas:"stage ." "stage slots" "stage tip" "stage acts" "stage .";align-items:center}
+    grid-template-rows:1fr auto auto auto auto 1fr;grid-template-areas:"stage ." "stage slots" "stage xtra" "stage tip" "stage acts" "stage .";align-items:center}
   #app.measuring .play,#app.measuring .play .stage{align-items:start;align-self:start}
   .play .stage{grid-area:stage;margin:0;align-self:center;justify-content:center}
   .play .slots{grid-area:slots;margin:0 auto;align-content:center}
   .play .tip{grid-area:tip}
+  .play .xtra{grid-area:xtra}
   .play .acts{grid-area:acts;width:100%;margin-top:14px}
   /* 后花园：左大字，右两步作答 + 讲解 */
   .quiz{display:grid;grid-template-columns:minmax(0,.8fr) minmax(320px,1.2fr);column-gap:clamp(20px,3vw,48px);
@@ -535,3 +536,36 @@ body{font-family:var(--font-ui);touch-action:manipulation;font-feature-settings:
 .acts .btn{min-width:0}
 .btn#selall.on{background:linear-gradient(180deg,#efe0c2,#e2cda4);box-shadow:inset 0 2px 4px rgba(90,60,20,.25);transform:translateY(1px)}
 @media (max-width:420px){.acts{gap:8px}.acts .btn{letter-spacing:.06em;font-size:17px}.btn .cost{margin-left:2px}}
+
+/* ================= v9：手机竖屏后花园一屏放下（答完后「下一题」不用滚动） ================= */
+@media (max-width:599px) and (orientation:portrait){
+  .v-quiz .hdr{min-height:58px}
+  .v-quiz .titlebox .lvl{font-size:28px}
+  .qdots{margin:4px 0 2px}
+  .tzg{width:clamp(92px,min(36vw,17vh),150px);height:clamp(92px,min(36vw,17vh),150px);font-size:clamp(66px,min(26vw,12.5vh),110px)}
+  @supports (height:1dvh){.tzg{width:clamp(92px,min(36vw,17dvh),150px);height:clamp(92px,min(36vw,17dvh),150px);font-size:clamp(66px,min(26vw,12.5dvh),110px)}}
+  .qpy{min-height:20px;margin-top:2px;font-size:var(--fs-md)}
+  .qstep{margin-top:clamp(4px,1.1vh,10px)}
+  .qh{margin-bottom:4px}
+  .sgrid{gap:6px}
+  .sopt{min-height:44px;padding:4px 2px 3px}
+  .sopt svg{width:18px;height:18px}
+  .rgrid{gap:8px}
+  .ropt{min-height:clamp(48px,7vh,60px);font-size:clamp(30px,4.6vh,40px)}
+  /* 讲解框压成两行：部首 · 结构 同一行，提示一行 */
+  .qinfo{margin-top:clamp(4px,1vh,10px);padding:5px 12px;line-height:1.45}
+  .qinfo.show{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:14px}
+  .qinfo b{font-size:20px}
+  .qinfo .lab{min-width:0;margin-right:4px}
+  .qinfo .tapme{width:100%}
+  /* 「下一题」贴底：内容再多也始终在屏内可点 */
+  .quiz .qacts{position:sticky;bottom:calc(6px + env(safe-area-inset-bottom));z-index:5;margin-top:clamp(6px,1.2vh,12px);padding-top:4px}
+  .quiz .qacts .btn{box-shadow:0 3px 0 #a17a44,0 6px 14px rgba(80,60,30,.18)}
+}
+
+/* v9：额外字（看得出来的常用字都认，不计入过关） */
+.xtra{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 8px;min-height:22px;margin:4px auto 0;max-width:100%;font-size:var(--fs-xs,12px);color:var(--ink3,#8a7a62);line-height:1.3}
+.xtra .xl{background:rgba(127,163,95,.15);color:#4c7032;border-radius:10px;padding:1px 8px}
+.xtra .xc{font-style:normal;font-size:20px;color:#4c7032;min-width:28px;text-align:center;cursor:pointer}
+.xtra .xc.new{animation:say .5s ease}
+.card .xfound{font-size:var(--fs-sm,14px);color:#4c7032}
