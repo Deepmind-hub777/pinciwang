@@ -508,6 +508,8 @@ body{font-family:var(--font-ui);touch-action:manipulation;font-feature-settings:
 @media (min-width:1500px) and (min-height:900px){
   #app{max-width:1400px}
   .play{grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr)}
+  .slot{width:78px}.slot .cell{width:74px;height:74px;font-size:52px}.slot .py{font-size:19px;height:28px;line-height:28px}
+  .tip{font-size:17px}
 }
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){.quiz .qinfo{min-height:124px}}
 @media (min-width:600px) and (min-height:600px) and (orientation:portrait){
