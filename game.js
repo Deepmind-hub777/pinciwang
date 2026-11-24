@@ -6,9 +6,10 @@ var HINT_COST=30, FIND_COIN=2, XTRA_COIN=2, CLEAR_COIN=20, GIFT_COIN=60, GIFT_MS
 var IDX=window.PCW_INDEX; /* {main:[[n,t,count,strokes]...]} */
 var BS=window.PCW_BUSHOU||{tiers:[],levels:[]}; /* 后花园题库：levels=[[tier,[[字,结构,细类,部首,名称,选项,拼音,读音,主部首]...]]...] */
 IDX.bushou=BS.levels.map(function(L,i){return [i+1,L[1][0][0],L[1].length,L[0]];});
-var GNAME={main:"主园",bushou:"后花园"};
+var GNAME={main:"主园",qz:"千字文园",bushou:"后花园"};
+var GARDENS=["main","qz","bushou"]; /* 千字文园：每个千字文（简体）字一关，按原文顺序，每 25 组一档 */
 function blank(){return {found:{},hints:{},miss:{},cleared:{},stars:{},best:{},got:{},coins:100,gift:Date.now(),cur:0};}
-var S={v:4,g:"main",sound:true,music:true,musicVol:0.22,voice:true,reveal:false,G:{main:blank(),bushou:blank()}};
+var S={v:4,g:"main",sound:true,music:true,musicVol:0.22,voice:true,reveal:false,G:{main:blank(),qz:blank(),bushou:blank()}};
 function load(){
   try{var r=localStorage.getItem(KEY);if(r){var p=JSON.parse(r);
     if(p.v===3||p.v===4){ for(var k in p) S[k]=p[k]; S.G.main=S.G.main||blank();
@@ -16,7 +17,7 @@ function load(){
         var ob=S.G.bonus, nb=blank(); if(ob){ nb.coins=ob.coins!=null?ob.coins:nb.coins; nb.gift=ob.gift||nb.gift; }
         S.G.bushou=nb; if(ob){ S.G.bonusOld=ob; delete S.G.bonus; } if(S.g==="bonus") S.g="bushou"; S.v=4; }
       S.G.bushou=S.G.bushou||blank(); var bb=S.G.bushou; ["best","got","stars","cleared"].forEach(function(k){ bb[k]=bb[k]||{}; });
-      if(S.g!=="main"&&S.g!=="bushou") S.g="main"; }
+      S.G.qz=S.G.qz||blank(); if(GARDENS.indexOf(S.g)<0) S.g="main"; }
     else { /* v1/v2 存档迁移到主园 */
       var m=blank(); ["found","hints","miss","cleared","stars","coins","gift","cur"].forEach(function(k){ if(p[k]!=null) m[k]=p[k]; });
       S.G.main=m; ["sound","music","musicVol"].forEach(function(k){ if(p[k]!=null) S[k]=p[k]; });
@@ -33,7 +34,7 @@ var AU=(function(){
   var VO={"小试牛刀":"xiaoshiniudao","渐入佳境":"jianrujiajing","炉火纯青":"luhuochunqing","登峰造极":"dengfengzaoji",
     "无懈可击":"wuxiekeji","游刃有余":"yourenyouyu","略有小成":"lueyouxiaocheng","勉强过关":"mianqiangguoguan",
     "太棒了":"taibangle","真厉害":"zhenlihai","好眼力":"haoyanli","恭喜过关":"gongxiguoguan","再想想":"zaixiangxiang",
-    "这个字已经找到过了":"yizhaodao","加油":"jiayou","常见部首":"changjianbushou","少见部首":"shaojianbushou","易混部首":"yihunbushou",
+    "这个字已经找到过了":"yizhaodao","加油":"jiayou","常见部首":"changjianbushou","少见部首":"shaojianbushou","易混部首":"yihunbushou","千字文":"qianziwen","千字文部首":"qianziwenbushou",
     "答对了":"dadui","再看看":"zailaiyici"};
   function mk(){ if(ctx) return ctx; var C=window.AudioContext||window.webkitAudioContext; if(!C) return null;
     ctx=new C(); return ctx; }
@@ -119,11 +120,12 @@ function foundOf(n){var d=D();if(!d.found[n])d.found[n]=[];return d.found[n];}
 function xfOf(n){var d=D();if(!d.xf)d.xf={};if(!d.xf[n])d.xf[n]=[];return d.xf[n];} /* v9 额外字（不计入过关） */
 function hintedOf(n){var d=D();if(!d.hints[n])d.hints[n]=[];return d.hints[n];}
 function isCleared(i){return !!D().cleared[list()[i][0]];}
-function unlocked(i){return i===0||isCleared(i-1)||isCleared(i)||(S.g==="bushou"&&IDX.bushou[i][3]!==IDX.bushou[i-1][3]);} /* 后花园：每一档的第一关都开放 */
+function unlocked(i){return i===0||isCleared(i-1)||isCleared(i)||(S.g!=="main"&&tier(i)!==tier(i-1));} /* 后花园、千字文园：每一档的第一关都开放 */
 function firstOpen(){var L=list();for(var i=0;i<L.length;i++){if(!isCleared(i))return i;}return L.length-1;}
 var TIERS=["小试牛刀","渐入佳境","炉火纯青","登峰造极","无懈可击"];
-function tierList(){ return S.g==="bushou"?BS.tiers:TIERS; }
-function tier(i,g){ g=g||S.g; if(g==="bushou") return BS.tiers[IDX.bushou[i][3]]; var b=[30,120,300,600];
+var QZT=[]; for(var q=0;q<250;q+=25) QZT.push("第 "+(q+1)+"–"+(q+25)+" 组");
+function tierList(){ return S.g==="bushou"?BS.tiers:S.g==="qz"?QZT:TIERS; }
+function tier(i,g){ g=g||S.g; if(g==="bushou") return BS.tiers[IDX.bushou[i][3]]; if(g==="qz") return QZT[Math.floor((IDX.qz[i][4]-1)/25)]; var b=[30,120,300,600];
   for(var k=0;k<4;k++){ if(i<b[k]) return TIERS[k]; } return TIERS[4]; }
 function unitWord(){return "个常用字";}
 function stats(g){var d=S.G[g],L=IDX[g],got=0,cl=0,stars=0;
@@ -150,7 +152,7 @@ function coinHTML(){return '<span class="coin" id="coin"><i>¥</i><span id="coin
 function refreshCoin(){var e=$("coinv");if(e)e.textContent=D().coins;}
 
 /* ---------- 关卡数据：按 50 关一包懒加载 ---------- */
-var CH={main:{}}, CHUNK=50, waiting={};
+var CH={main:{},qz:{}}, CHUNK=50, waiting={};
 window.PCW_CHUNK=function(g,start,levels){ levels.forEach(function(L,k){ CH[g][start+k]=L; });
   var key=g+start; if(waiting[key]){ waiting[key].forEach(function(f){f();}); delete waiting[key]; } };
 function getLevel(g,i){
@@ -158,7 +160,7 @@ function getLevel(g,i){
   var start=Math.floor(i/CHUNK)*CHUNK, key=g+start;
   return new Promise(function(res,rej){
     var first=!waiting[key]; (waiting[key]=waiting[key]||[]).push(function(){res(CH[g][i]);});
-    if(first){ var sc=document.createElement("script"); sc.src="data/"+g+"-"+String(start/CHUNK).padStart(2,"0")+".js?v=6";
+    if(first){ var sc=document.createElement("script"); sc.src="data/"+g+"-"+String(start/CHUNK).padStart(2,"0")+".js?v=7";
       sc.onerror=function(){ delete waiting[key]; rej(new Error("关卡数据加载失败")); }; document.body.appendChild(sc); }
   });
 }
@@ -170,15 +172,15 @@ function renderHome(){
   var h='<div class="home"><div class="topline"><span class="mus'+(S.music?" on":"")+'" id="mus" title="背景音乐" aria-label="背景音乐">'+ICON.music+'</span>'+coinHTML()+'</div>'+
     '<div class="logo"><div class="ink-blob"></div><h1>天天拼词园</h1><div class="seal">字中找字</div></div>'+
     '<div class="slogan">一字拆出千万意</div>'+
-    '<div class="gtabs">'+["main","bushou"].map(function(g){return '<div class="gtab'+(S.g===g?" on":"")+'" data-g="'+g+'">'+GNAME[g]+'<small>'+IDX[g].length+' 关</small></div>';}).join("")+'</div>'+
-    '<div class="gdesc">'+(S.g==="main"?"从汉字里描出藏着的<b>常用字</b>":"按《新华字典》部首考<b>结构</b>和<b>部首</b>")+' · 金币与进度各自独立</div>'+
+    '<div class="gtabs">'+GARDENS.map(function(g){return '<div class="gtab'+(S.g===g?" on":"")+'" data-g="'+g+'">'+GNAME[g]+'<small>'+IDX[g].length+' 关</small></div>';}).join("")+'</div>'+
+    '<div class="gdesc">'+(S.g==="main"?"从汉字里描出藏着的<b>常用字</b>":S.g==="qz"?"按《千字文》顺序，每个字一关":"按《新华字典》部首考<b>结构</b>和<b>部首</b>")+' · 金币与进度各自独立</div>'+
     '<div class="stats"><div><b>'+sm.got+'</b><span>'+(S.g==="bushou"?"答对字":"已得字")+'</span></div><div><b>'+sm.cl+'/'+sm.total+'</b><span>通关</span></div><div><b>'+sm.stars+'</b><span>星</span></div></div>'+
     '<div class="menu">'+
       (giftReady?'<div class="bigbtn red" id="hgift">领取每日礼包<small>金币 +'+GIFT_COIN+'</small></div>':'')+
       '<div class="bigbtn" id="start">'+(allDone?"再玩一遍":"继续游戏")+'<small>'+GNAME[S.g]+' 第 '+meta(nx).n+' 关 · '+tier(nx)+'</small></div>'+
       '<div class="bigbtn green" id="pick">选择关卡</div>'+
     '</div>'+
-    (S.g==="main"?'<div class="howto"><b>玩法说明</b><br>每关给出一个汉字（或一句话），字里藏着若干<b>常用字</b>。<br>'+
+    (S.g!=="bushou"?'<div class="howto"><b>玩法说明</b><br>'+(S.g==="qz"?'《千字文》里的每个字（简体）都是一关，按原文顺序排列；':'')+'每关给出一个汉字（或一句话），字里藏着若干<b>常用字</b>。<br>'+
     '点选或划过笔画把它们<b>描黑</b>，拼成一个就点「提交」；「全选」一下选中整个字；点已找到的字能听读音。<br>找齐即可过关；卡住时用「提示」（'+HINT_COST+' 金币）。</div>'
     :'<div class="howto"><b>玩法说明</b><br>每关 10 个常用字。先选这个字的<b>结构</b>，再从四个里选出它的<b>部首</b>；答错会标出正确答案。<br>'+
     '部首按国家规范《汉字部首表》和《部首归部规范》（新版《新华字典》同一标准）；答完点大字能听读音。<br>答对 6 个过关，全对得三星。</div>')+
@@ -253,7 +255,7 @@ function drawLevel(i,L){
   svg+='</svg>';
   var h='<div class="hdr"><div class="gear" id="gear" aria-label="设置">'+GEAR+'</div>'+
         '<div class="gift" id="gift" aria-label="每日礼包"><div class="box">'+ICON.gift+'</div><div class="cd" id="cd">--:--:--</div></div>'+
-        '<div class="titlebox"><div class="lvl">'+(S.g==="bonus"?'<span class="gtag">后花园</span>':'')+'第'+L.n+'关</div><div class="goal">找出<b>'+L.a.length+'</b>'+unitWord()+'</div></div></div>'+
+        '<div class="titlebox"><div class="lvl">'+'第'+L.n+'关</div><div class="goal">'+(S.g==="qz"?'第 '+(L.g||'')+' 组 · ':'')+'找出<b>'+L.a.length+'</b>'+unitWord()+'</div></div></div>'+
         coinHTML().replace('class="coin"','class="coin" style="position:absolute;right:14px;top:14px"')+
         '<div class="play" id="play"><div class="slots kai'+(S.g==="bonus"?" bonus":"")+'" id="slots"></div>'+
         '<div class="xtra" id="xtra"></div>'+
@@ -270,7 +272,7 @@ function drawLevel(i,L){
   $("hint").onclick=useHint;
   $("submit").onclick=submit;
   renderSlots(); renderXtra(); fitBoard(); buildGeom(); paint(); bindPointer(); startTimer();
-  st.streak=0; st.wrongRun=0; AU.preloadLevel(L); sfx.start(); AU.line(tier(i),350);
+  st.streak=0; st.wrongRun=0; AU.preloadLevel(L); sfx.start(); AU.line(S.g==="qz"?"千字文":tier(i),350);
 }
 /* 存档兼容：答案表更新后，去掉已不在本关答案里的旧记录；已通关与星级保持不变 */
 function pruneSave(L){
@@ -607,9 +609,9 @@ function openPicker(){
     var done=items.filter(isCleared).length;
     h+='<div class="sec">'+t+'<em>'+done+'/'+items.length+'</em></div><div class="prow">';
     items.forEach(function(i){var x=L[i],lk=!unlocked(i),cl=isCleared(i),s=d.stars[x[0]]||0;
-      var show=cl||S.reveal;
+      var show=cl||S.reveal||S.g==="qz"; /* 千字文园：字按原文排列，直接显示 */
       h+='<div class="pitem'+(cl?" done":"")+(lk?" lock":"")+(i===d.cur?" cur":"")+(x[1].length>1&&show?" long":"")+'" data-i="'+i+'">'+
-        '<span class="c kai">'+(lk&&!S.reveal?ICON.lock:(show?esc(x[1]):"？"))+'</span><span>'+x[0]+'</span>'+
+        '<span class="c kai">'+(lk&&!show?ICON.lock:(show?esc(x[1]):"？"))+'</span><span>'+x[0]+'</span>'+
         (cl?'<span class="ps">'+"★★★".slice(0,s)+'</span>':'')+'</div>';});
     h+='</div>';
   });
@@ -622,6 +624,17 @@ function openPicker(){
   var cur=m.querySelector(".pitem.cur"); if(cur) cur.scrollIntoView({block:"center"});
 }
 
-load(); renderHome();
+load();
+/* 汉字学园：#lv=N 打开主园第 N 关，#qz=N 打开千字文园第 N 关，#bs=N 打开后花园第 N 关（从千字文模块跳转，可直接预览未解锁关卡） */
+function openFromHash(){
+  var m=/^#(lv|qz|bs)=(\d+)$/.exec(location.hash||""); if(!m) return false;
+  var g=m[1]==="lv"?"main":m[1]==="qz"?"qz":"bushou", n=+m[2], L=IDX[g], i=-1;
+  for(var k=0;k<L.length;k++){ if(L[k][0]===n){ i=k; break; } }
+  try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
+  if(i<0) return false;
+  S.g=g; save(); renderLevel(i); return true;
+}
+if(!openFromHash()) renderHome();
+window.addEventListener("hashchange",function(){ openFromHash(); });
 window.__pcw={AU:AU,S:S,st:st,IDX:IDX,BS:BS,qz:function(){return qz;},renderQuiz:renderQuiz,getLevel:getLevel,renderLevel:renderLevel,openWin:openWin,openPicker:openPicker,openSettings:openSettings,fitBoard:fitBoard,submit:submit,useHint:useHint,renderHome:renderHome};
 })();
