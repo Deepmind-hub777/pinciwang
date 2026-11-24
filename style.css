@@ -586,3 +586,9 @@ html.in-hub .toast{top:calc(42% + 24px)}
 .xtra .xc{font-style:normal;font-size:20px;color:#4c7032;min-width:28px;text-align:center;cursor:pointer}
 .xtra .xc.new{animation:say .5s ease}
 .card .xfound{font-size:var(--fs-sm,14px);color:#4c7032}
+
+/* 手机横屏（高度很矮）：后花园「下一题」贴底，不用滚动就能点到 */
+@media (orientation:landscape) and (max-height:520px){
+  .quiz .qacts{position:sticky;bottom:calc(6px + env(safe-area-inset-bottom));z-index:5;padding-top:4px}
+  .quiz .qacts .btn{box-shadow:0 3px 0 #a17a44,0 6px 14px rgba(80,60,30,.18)}
+}
