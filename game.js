@@ -638,5 +638,45 @@ if(!openFromHash()) renderHome();
 /* 汉字学园账号：云端进度合并回来后，重新读档并刷新首页 */
 window.addEventListener("hzxy-progress",function(e){ if(!e.detail||e.detail.key!==KEY) return; load(); refreshCoin(); if(document.querySelector("#app .home")) renderHome(); });
 window.addEventListener("hashchange",function(){ openFromHash(); });
+/* 汉字学园：从千字文「字的家族」跳来（?from=qzw&p=页&g=组&ret=千字文网址）→ 顶栏显示「‹ 返回千字文 第N页」。
+   点它：若上一页正是那页千字文，就用浏览器返回（保留滚动位置）；否则正常跳到 ret（只允许同域）。安卓返回键本来就能回去。 */
+(function qzwReturn(){
+  var sp,u; try{ sp=new URLSearchParams(location.search); }catch(e){ return; }
+  if(sp.get("from")!=="qzw") return;
+  try{ u=new URL(sp.get("ret")||"",location.href); }catch(e){ return; }
+  if(u.origin!==location.origin||!/^https?:$/.test(u.protocol)) return;
+  var p=parseInt(sp.get("p"),10), pg=p>0?"第"+p+"页":"";
+  var css=document.createElement("style");
+  css.textContent='.hubbar a.hubbar-back.to-qzw .qzw-pg,.qzret .qzw-pg{font-size:13px;color:#7a5a32;font-family:-apple-system,"PingFang SC","Noto Sans CJK SC",sans-serif;margin-left:2px}'+
+    '.qzret{position:fixed;z-index:60;top:calc(6px + env(safe-area-inset-top,0px));left:max(6px,env(safe-area-inset-left,0px))}'+
+    '.qzret a{display:inline-flex;align-items:center;gap:4px;min-height:40px;padding:0 12px 0 8px;border-radius:20px;background:rgba(246,239,224,.96);border:1px solid #d9c7a6;box-shadow:0 2px 8px rgba(80,60,30,.12);color:#5b3f1f;text-decoration:none;font-family:"BrushQian","Brush","KaiTi","STKaiti",serif;font-size:18px;white-space:nowrap}'+
+    '.qzret svg{width:18px;height:18px;flex:none}'+
+    'html.qzret-on body:not(.in-hub) #app{padding-top:46px}'+
+    '@media (max-width:359px){.hubbar a.hubbar-back.to-qzw .qzw-pg{font-size:11px}}';
+  document.head.appendChild(css);
+  function go(e){
+    var ref=""; try{ var r=new URL(document.referrer); r.hash=""; ref=r.href; }catch(x){}
+    var t0=new URL(u.href); t0.hash="";
+    if(ref&&ref===t0.href&&history.length>1){
+      e.preventDefault();
+      var t=setTimeout(function(){ location.href=u.href; },800);
+      window.addEventListener("pagehide",function(){ clearTimeout(t); },{once:true});
+      history.back();
+    }
+  }
+  var a=document.querySelector(".hubbar a.hubbar-back");
+  if(a){
+    var b=a.querySelector(".hubbar-brand"); b.textContent="返回千字文";
+    if(pg){ var s=document.createElement("span"); s.className="qzw-pg"; s.textContent=pg; a.appendChild(s); }
+    a.classList.add("to-qzw");
+  } else {
+    var nav=document.createElement("nav"); nav.className="qzret"; nav.setAttribute("aria-label","返回千字文");
+    nav.innerHTML='<a><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>返回千字文</span>'+(pg?'<span class="qzw-pg">'+pg+'</span>':'')+'</a>';
+    document.body.appendChild(nav); a=nav.firstChild; document.documentElement.classList.add("qzret-on");
+  }
+  a.href=u.href; a.title="回到千字文"+(pg?pg:"")+(sp.get("g")?"（第 "+sp.get("g").replace(/\D/g,"")+" 组）":"");
+  a.setAttribute("aria-label","返回千字文"+pg);
+  a.addEventListener("click",go);
+})();
 window.__pcw={AU:AU,S:S,st:st,IDX:IDX,BS:BS,qz:function(){return qz;},renderQuiz:renderQuiz,getLevel:getLevel,renderLevel:renderLevel,openWin:openWin,openPicker:openPicker,openSettings:openSettings,fitBoard:fitBoard,submit:submit,useHint:useHint,renderHome:renderHome};
 })();
