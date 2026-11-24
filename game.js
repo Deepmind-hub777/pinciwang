@@ -169,7 +169,7 @@ function renderHome(){
   stopTimer();
   var nx=firstOpen(), L=list(), allDone=L.every(function(_,i){return isCleared(i);}), sm=stats(S.g);
   var giftReady=D().gift+GIFT_MS<=Date.now();
-  var h='<div class="home"><div class="topline"><span class="mus'+(S.music?" on":"")+'" id="mus" title="背景音乐" aria-label="背景音乐">'+ICON.music+'</span>'+coinHTML()+'</div>'+
+  var h='<div class="home"><div class="topline"><span class="mus'+(S.music?" on":"")+'" id="mus" title="背景音乐" aria-label="背景音乐">'+ICON.music+'</span><span class="acslot" id="acslot"></span>'+coinHTML()+'</div>'+
     '<div class="logo"><div class="ink-blob"></div><h1>天天拼词园</h1><div class="seal">字中找字</div></div>'+
     '<div class="slogan">一字拆出千万意</div>'+
     '<div class="gtabs">'+GARDENS.map(function(g){return '<div class="gtab'+(S.g===g?" on":"")+'" data-g="'+g+'">'+GNAME[g]+'<small>'+IDX[g].length+' 关</small></div>';}).join("")+'</div>'+
@@ -185,7 +185,7 @@ function renderHome(){
     :'<div class="howto"><b>玩法说明</b><br>每关 10 个常用字。先选这个字的<b>结构</b>，再从四个里选出它的<b>部首</b>；答错会标出正确答案。<br>'+
     '部首按国家规范《汉字部首表》和《部首归部规范》（新版《新华字典》同一标准）；答完点大字能听读音。<br>答对 6 个过关，全对得三星。</div>')+
     '</div>';
-  $("app").innerHTML=h; setView("v-home");
+  $("app").innerHTML=h; if(window.HZXY_ACCOUNT) HZXY_ACCOUNT.mountIn($("acslot")); setView("v-home");
   $("start").onclick=function(){sfx.click();renderLevel(nx);};
   $("pick").onclick=function(){openPicker();};
   if($("hgift")) $("hgift").onclick=function(){claimGift();renderHome();};
@@ -635,6 +635,8 @@ function openFromHash(){
   S.g=g; save(); renderLevel(i); return true;
 }
 if(!openFromHash()) renderHome();
+/* 汉字学园账号：云端进度合并回来后，重新读档并刷新首页 */
+window.addEventListener("hzxy-progress",function(e){ if(!e.detail||e.detail.key!==KEY) return; load(); refreshCoin(); if(document.querySelector("#app .home")) renderHome(); });
 window.addEventListener("hashchange",function(){ openFromHash(); });
 window.__pcw={AU:AU,S:S,st:st,IDX:IDX,BS:BS,qz:function(){return qz;},renderQuiz:renderQuiz,getLevel:getLevel,renderLevel:renderLevel,openWin:openWin,openPicker:openPicker,openSettings:openSettings,fitBoard:fitBoard,submit:submit,useHint:useHint,renderHome:renderHome};
 })();
