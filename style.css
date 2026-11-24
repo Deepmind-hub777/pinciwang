@@ -530,3 +530,8 @@ body{font-family:var(--font-ui);touch-action:manipulation;font-feature-settings:
   .qh{margin-bottom:8px}
   .qdots{margin-bottom:4px}
 }
+
+/* 全选按钮（v8）：四个按钮一排，选中整个字时呈按下状态 */
+.acts .btn{min-width:0}
+.btn#selall.on{background:linear-gradient(180deg,#efe0c2,#e2cda4);box-shadow:inset 0 2px 4px rgba(90,60,20,.25);transform:translateY(1px)}
+@media (max-width:420px){.acts{gap:8px}.acts .btn{letter-spacing:.06em;font-size:17px}.btn .cost{margin-left:2px}}

@@ -178,7 +178,7 @@ function renderHome(){
       '<div class="bigbtn green" id="pick">选择关卡</div>'+
     '</div>'+
     (S.g==="main"?'<div class="howto"><b>玩法说明</b><br>每关给出一个汉字（或一句话），字里藏着若干<b>常用字</b>。<br>'+
-    '点选或划过笔画把它们<b>描黑</b>，拼成一个就点「提交」；点已找到的字能听读音。<br>找齐即可过关；卡住时用「提示」（'+HINT_COST+' 金币）。</div>'
+    '点选或划过笔画把它们<b>描黑</b>，拼成一个就点「提交」；「全选」一下选中整个字；点已找到的字能听读音。<br>找齐即可过关；卡住时用「提示」（'+HINT_COST+' 金币）。</div>'
     :'<div class="howto"><b>玩法说明</b><br>每关 10 个常用字。先选这个字的<b>结构</b>，再从四个里选出它的<b>部首</b>；答错会标出正确答案。<br>'+
     '部首按国家规范《汉字部首表》和《部首归部规范》（新版《新华字典》同一标准）；答完点大字能听读音。<br>答对 6 个过关，全对得三星。</div>')+
     '</div>';
@@ -242,11 +242,11 @@ function drawLevel(i,L){
   var lay=layout(L.ch.length), cols=lay[0], rows=lay[1];
   var CELL=1024, pad=40, W=cols*CELL, H=rows*CELL;
   var svg='<svg id="board" viewBox="'+(-pad)+' '+(-pad)+' '+(W+2*pad)+' '+(H+2*pad)+'" xmlns="http://www.w3.org/2000/svg">';
-  var gi=0;
+  var gi=0, ranges=[]; st.ranges=ranges;
   L.ch.forEach(function(c,ci){
     var p=lay[2][ci], sc=cols>1?0.94:1, ox=p[0]*CELL+CELL*(1-sc)/2, oy=p[1]*CELL+CELL*(1-sc)/2;
     svg+='<g class="cg" transform="translate('+ox+' '+(oy+900*sc)+') scale('+sc+' '+(-sc)+')">';
-    c.st.forEach(function(d){svg+='<path class="st" data-i="'+gi+'" d="'+d+'"/>';gi++;});
+    var g0=gi; c.st.forEach(function(d){svg+='<path class="st" data-i="'+gi+'" d="'+d+'"/>';gi++;}); ranges.push([g0,gi]);
     svg+='</g>';
   });
   svg+='</svg>';
@@ -258,11 +258,13 @@ function drawLevel(i,L){
         '<div class="stage" id="stage">'+svg+'</div>'+
         '<div class="tip" id="tip"></div>'+
         '<div class="acts"><div class="btn" id="hint">提示<span class="cost">-'+HINT_COST+'</span></div>'+
+        '<div class="btn" id="selall" title="选中整个字的全部笔画">全选</div>'+
         '<div class="btn" id="clear">清空</div><div class="btn primary off" id="submit">提交</div></div></div>';
   $("app").innerHTML=h; setView("v-play");
   $("gear").onclick=openSettings;
   $("gift").onclick=claimGift;
   $("clear").onclick=function(){st.sel.clear();paint();sfx.click();};
+  $("selall").onclick=selectAll;
   $("hint").onclick=useHint;
   $("submit").onclick=submit;
   renderSlots(); fitBoard(); buildGeom(); paint(); bindPointer(); startTimer();
@@ -296,6 +298,19 @@ function renderSlots(newc){
     el.onclick=function(){ el.classList.remove("say"); void el.offsetWidth; el.classList.add("say"); AU.zi(a,0); };
   });
 }
+/* 全选（借鉴天天拼词王）：单字关一点选中整个字，再点一次清空；多字关依次选中第 1 个字、第 2 个字……最后清空 */
+function rangeSel(r){var out=[];for(var k=r[0];k<r[1];k++)out.push(k);return out;}
+function selectAll(){
+  var R=st.ranges||[]; if(!R.length) return;
+  st.geoms.forEach(function(g){g.hint=false;});
+  var cur=-1; R.forEach(function(r,k){ if(same(st.sel,rangeSel(r))) cur=k; });
+  var next;
+  if(R.length===1) next=(cur===0)?null:0;
+  else next=(cur>=0&&cur<R.length-1)?cur+1:(cur===R.length-1?null:0);
+  st.sel=new Set(next===null?[]:rangeSel(R[next]));
+  sfx.click(); paint();
+  if(next!==null&&R.length>1) toast("已选中第 "+(next+1)+" 个字，点「提交」；再点「全选」换下一个字");
+}
 function paint(){
   st.geoms.forEach(function(g){
     var on=st.sel.has(g.i);
@@ -305,6 +320,7 @@ function paint(){
   $("tip").innerHTML=st.sel.size?'已描黑 <b>'+st.sel.size+'</b> 笔 · 还差 <b>'+need+'</b> 个'
     :(need?(foundOf(L.n).length?'点选或划过笔画描黑后「提交」 · 点已找到的字可听读音':'点选或划过笔画，把字描黑后点「提交」'):'本关已全部找齐 · 点字可听读音');
   $("submit").classList.toggle("off",st.sel.size===0);
+  var sa=$("selall"); if(sa&&st.ranges&&st.ranges.length===1) sa.classList.toggle("on",st.sel.size===st.ranges[0][1]);
 }
 function local(g,cx,cy){var p=st.svg.createSVGPoint();p.x=cx;p.y=cy;return p.matrixTransform(g.getScreenCTM().inverse());}
 function inside(g,cx,cy){
@@ -359,7 +375,7 @@ function submit(){
     sfx.ok(); toast("找到「"+hit.c+"」"+(S.g==="bonus"?" "+hit.nm:"")+"！金币 +"+FIND_COIN);
     st.streak=(st.streak||0)+1; st.wrongRun=0;
     var last=L.a.every(function(a){return f.indexOf(a.c)>=0;});
-    (S.voice?AU.zi(hit,380):Promise.resolve()).then(function(){ if(!last&&st.streak%3===0){ AU.line(["好眼力","真厉害","太棒了"][(st.streak/3-1)%3],120); } });
+    (S.voice?AU.zi(hit,380):Promise.resolve()).then(function(){ if(!last&&st.streak>0&&st.streak%3===0){ AU.line(["好眼力","真厉害","太棒了"][(st.streak/3-1)%3],120); } });
     flash(Array.from(st.sel));
     st.sel.clear(); paint(); renderSlots(hit.c); refreshCoin();
     if(last) setTimeout(function(){sfx.win();openWin();},S.voice?1100:700);
