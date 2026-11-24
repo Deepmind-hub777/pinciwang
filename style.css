@@ -295,7 +295,7 @@ body{font-family:var(--font-ui);touch-action:manipulation;font-feature-settings:
 .qdots i{width:10px;height:10px;border-radius:50%;background:#e3d6bb;box-shadow:inset 0 0 0 1px rgba(150,120,80,.25)}
 .qdots i.cur{background:#fff;box-shadow:0 0 0 2px var(--orange)}
 .qdots i.ok{background:#7fa35f}.qdots i.no{background:#d9654c}
-.qzi{display:flex;flex-direction:column;align-items:center;margin-top:8px}
+.qzi{display:flex;flex-direction:column;align-items:center;margin-top:0}
 .tzg{position:relative;width:clamp(128px,38vw,156px);height:clamp(128px,38vw,156px);border:2px solid #b77f6b;border-radius:6px;background:#fffaf2;
   display:flex;align-items:center;justify-content:center;font-size:clamp(92px,28vw,116px);line-height:1;color:var(--ink);cursor:pointer;user-select:none;
   box-shadow:0 3px 0 rgba(183,127,107,.35),0 10px 24px rgba(110,80,30,.10)}
@@ -340,3 +340,191 @@ body{font-family:var(--font-ui);touch-action:manipulation;font-feature-settings:
 .card .review .rv b{color:var(--red);font-size:18px;font-weight:400}
 .card .acts .btn{font-size:20px}
 @media (max-width:370px){.sgrid{gap:6px}.sopt{font-size:12px}.ropt{min-height:56px;font-size:32px}}
+
+/* ================= v7：多设备适配（手机 / 大屏手机 / 平板竖屏 / 平板横屏 / 电脑），参照 UI UX Pro Max ================= */
+/* 视口高度：100dvh 跟随安卓/iOS 地址栏，旧浏览器回退 100vh */
+:root{--vh:100vh;--padY:calc(36px + env(safe-area-inset-top) + env(safe-area-inset-bottom))}
+@supports (height:100dvh){:root{--vh:100dvh}}
+#app{display:flex;flex-direction:column}
+.home{min-height:calc(var(--vh) - var(--padY))}
+#app.v-play,#app.v-quiz{min-height:var(--vh)}
+.play,.quiz{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0}
+#app.measuring .play{flex:none;justify-content:flex-start}
+.stage{width:100%}
+#board{flex:none;max-width:100%}
+.picker{max-height:calc(var(--vh) * .82)}
+.mask{overflow-y:auto;align-items:safe center}
+.mask>.card,.mask>.picker{margin:auto}
+.mask{padding:calc(30px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(22px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left))}
+.slots{max-width:100%}
+.acts{width:100%}
+.qacts{width:100%}
+.qstep,.qinfo{width:100%}
+
+/* 宽屏共用：居中纸卡（覆盖 v5 的 460px 窄卡） */
+@media (min-width:600px){
+  body{align-items:flex-start;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}
+  #app{max-width:min(880px,100%);min-height:calc(var(--vh) - 32px);background:rgba(255,253,246,.55);border-radius:24px;
+    box-shadow:0 0 0 1px rgba(198,164,118,.25),0 24px 60px rgba(80,60,30,.12);padding:18px 28px 24px}
+  #app.v-play,#app.v-quiz{min-height:calc(var(--vh) - 32px)}
+  .home{min-height:calc(var(--vh) - 74px)}
+  #app>.coin{right:24px!important;top:20px!important}
+}
+
+/* ---------- 平板与电脑（宽≥600 且 高≥600）：放大字、格子、按钮 ---------- */
+@media (min-width:600px) and (min-height:600px){
+  :root{--fs-xs:13px;--fs-sm:15px;--fs-md:17px;--fs-lg:20px;--tap:52px}
+  /* 首页 */
+  .logo h1{font-size:clamp(70px,10vw,104px)}
+  .logo .seal{font-size:17px;right:-32px;padding:6px 5px}
+  .slogan{font-size:17px}
+  .gtabs{width:min(84%,500px)}
+  .gtab{font-size:32px;min-height:66px;border-radius:30px}
+  .gtabs{border-radius:34px}
+  .home .stats,.home .menu{width:min(84%,500px)}
+  .home .stats b{font-size:28px}
+  .home .stats div{padding:14px 4px}
+  .bigbtn{font-size:42px;min-height:84px;padding:14px 0 12px;border-radius:48px}
+  .bigbtn small{font-size:var(--fs-sm)}
+  .home .menu{gap:22px}
+  .howto{max-width:620px;font-size:16px;padding:18px 22px}
+  .mus{width:52px;height:52px}.mus svg{width:24px;height:24px}
+  .coin{font-size:18px;padding:5px 16px 5px 6px}.coin i{width:30px;height:30px;font-size:14px}
+  /* 游戏页头 */
+  .hdr{min-height:84px;gap:14px}
+  .gear{width:58px;height:58px;flex-basis:58px}
+  .gift{width:64px;flex-basis:64px}.gift .box svg{width:50px;height:50px}.gift .cd{font-size:12px}
+  .titlebox{margin-right:70px}
+  .titlebox .lvl{font-size:46px}
+  .titlebox .goal{font-size:16px}
+  .titlebox .goal b{font-size:19px}
+  /* 主园答案格 */
+  .slots{gap:10px 10px;margin-top:14px}
+  .slot{width:66px}
+  .slot .py{height:24px;line-height:24px;font-size:17px}
+  .slots.bonus .py{font-size:14px}
+  .slot .cell{width:62px;height:62px;font-size:44px;border-width:2px;border-radius:6px}
+  .stage{margin-top:16px}
+  .tip{font-size:16px;margin-top:12px;min-height:24px}
+  .acts{max-width:600px;gap:18px;margin-top:16px}
+  .btn{min-height:60px;font-size:26px;border-radius:32px}
+  .btn .cost{font-size:14px}
+  /* 后花园 */
+  .qdots{gap:9px;margin-top:10px}.qdots i{width:13px;height:13px}
+  .tzg{width:clamp(170px,22vh,280px);height:clamp(170px,22vh,280px);font-size:clamp(124px,16vh,206px);border-width:3px;border-radius:8px}
+  @supports (height:1dvh){.tzg{width:clamp(170px,22dvh,280px);height:clamp(170px,22dvh,280px);font-size:clamp(124px,16dvh,206px)}}
+  .qpy{font-size:24px;min-height:32px;margin-top:8px}
+  .qstep{max-width:680px;width:100%;margin-top:16px}
+  .qh{font-size:19px;margin-bottom:12px;gap:10px}
+  .qh em{width:30px;height:30px;font-size:16px}
+  .qh b{font-size:16px;padding:2px 12px;border-radius:14px}
+  .sgrid{gap:12px}
+  .sopt{min-height:76px;font-size:17px;border-radius:16px;gap:4px;padding:8px 4px}
+  .sopt svg{width:32px;height:32px}
+  .rgrid{gap:16px}
+  .ropt{min-height:104px;font-size:64px;border-radius:18px;border-width:2.5px}
+  .qinfo{max-width:680px;width:100%;font-size:18px;padding:14px 20px;margin-top:16px}
+  .qinfo b{font-size:32px}
+  .qacts{max-width:360px}
+  /* 弹窗与选关 */
+  .card{max-width:480px;padding:40px 30px 26px}
+  .card .ribbon{font-size:34px;padding:4px 38px}
+  .card .big{font-size:110px}
+  .card .big small{font-size:38px}
+  .stars{font-size:40px}
+  .rank{font-size:42px}
+  .card h3{font-size:40px}
+  .card .found{font-size:20px}
+  .card .review .rv i{font-size:34px}
+  .card .acts .btn,.card .btn{font-size:24px;min-height:56px}
+  .setrow{min-height:64px}
+  .picker{max-width:min(760px,100%);padding:20px 24px 26px}
+  .picker .h b{font-size:38px}
+  .picker .sec{font-size:26px}
+  .prow{grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:12px}
+  .pitem{font-size:14px;border-radius:12px}
+  .pitem .c{font-size:30px}
+  .pitem .c svg.lk{width:20px;height:20px}
+  .pitem .ps{font-size:12px}
+  .toast{font-size:18px;padding:13px 24px}
+}
+
+/* ---------- 横屏（平板横放、电脑、手机横握）：双栏 ---------- */
+@media (orientation:landscape) and (min-width:640px){
+  #app{max-width:min(1240px,100%)}
+  /* 主园：左棋盘，右答案格 + 按钮 */
+  .play{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,1fr);column-gap:clamp(20px,3vw,44px);
+    grid-template-rows:1fr auto auto auto 1fr;grid-template-areas:"stage ." "stage slots" "stage tip" "stage acts" "stage .";align-items:center}
+  #app.measuring .play,#app.measuring .play .stage{align-items:start;align-self:start}
+  .play .stage{grid-area:stage;margin:0;align-self:center;justify-content:center}
+  .play .slots{grid-area:slots;margin:0 auto;align-content:center}
+  .play .tip{grid-area:tip}
+  .play .acts{grid-area:acts;width:100%;margin-top:14px}
+  /* 后花园：左大字，右两步作答 + 讲解 */
+  .quiz{display:grid;grid-template-columns:minmax(0,.8fr) minmax(320px,1.2fr);column-gap:clamp(20px,3vw,48px);
+    align-content:center;grid-template-areas:"zi s1" "zi s2" "zi info" "zi acts";align-items:start}
+  .quiz .qdots{margin:0 0 14px}
+  .quiz .qzi{grid-area:zi;margin:0;align-self:center}
+  .quiz #qs1{grid-area:s1;margin-top:0}
+  .quiz #qs2{grid-area:s2}
+  .quiz .qinfo{grid-area:info;display:block;visibility:hidden}
+  .quiz .qinfo.show{visibility:visible}
+  .quiz .qacts{grid-area:acts;margin-top:14px}
+  .quiz .qstep,.quiz .qinfo{max-width:none}
+  /* 首页：左标题，右入口；玩法说明通栏 */
+  .home{display:grid;grid-template-columns:1fr 1fr;column-gap:clamp(24px,4vw,64px);align-content:center;justify-items:center;
+    grid-template-areas:"top top" "logo tabs" "logo desc" "logo stats" "slogan menu" "how how"}
+  .home .topline{grid-area:top;align-self:start}
+  .home .logo{grid-area:logo;margin-top:0;align-self:end}
+  .home .slogan{grid-area:slogan;align-self:start;margin-top:18px}
+  .home .gtabs{grid-area:tabs;margin-top:0}
+  .home .gdesc{grid-area:desc}
+  .home .stats{grid-area:stats}
+  .home .menu{grid-area:menu;margin-top:clamp(14px,3vh,28px)}
+  .home .howto{grid-area:how;margin-top:clamp(18px,4vh,36px);max-width:860px}
+  .home .gtabs,.home .stats,.home .menu{width:min(100%,480px)}
+}
+/* 平板横屏 / 电脑：大字再放大（按高度） */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  .tzg{width:clamp(220px,40vh,380px);height:clamp(220px,40vh,380px);font-size:clamp(160px,29vh,280px)}
+  @supports (height:1dvh){.tzg{width:clamp(220px,40dvh,380px);height:clamp(220px,40dvh,380px);font-size:clamp(160px,29dvh,280px)}}
+  .qpy{font-size:28px;margin-top:14px}
+  .play .slots{max-width:560px}
+  .quiz .ropt{min-height:96px}
+  .quiz .sopt{min-height:72px}
+}
+/* 手机横握（矮屏）：收紧间距，标题缩小 */
+@media (orientation:landscape) and (max-height:520px){
+  .hdr{min-height:52px}
+  .titlebox .lvl{font-size:28px}
+  .logo h1{font-size:48px}
+  .home{grid-template-areas:"top top" "logo tabs" "logo desc" "logo stats" "slogan menu" "how how"}
+  .bigbtn{min-height:52px;font-size:26px;padding:8px 0}
+  .tzg{width:120px;height:120px;font-size:88px}
+  .sopt{min-height:46px}.ropt{min-height:52px;font-size:32px}
+  .qinfo{margin-top:8px;padding:6px 12px;line-height:1.6}
+}
+/* 大桌面：限制最大宽度，避免拉得过宽 */
+@media (min-width:1500px) and (min-height:900px){
+  #app{max-width:1400px}
+  .play{grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr)}
+}
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){.quiz .qinfo{min-height:124px}}
+@media (min-width:600px) and (min-height:600px) and (orientation:portrait){
+  .home .logo{margin-top:auto}
+  .home .howto{margin-bottom:auto}
+  .logo h1{font-size:clamp(70px,12vw,120px)}
+  .home .gtabs,.home .stats,.home .menu{width:min(84%,540px)}
+}
+/* 平板/大屏手机竖屏高度不足 1100 时，后花园按高度收紧，尽量一屏放下 */
+@media (min-width:600px) and (min-height:600px) and (max-height:1100px) and (orientation:portrait){
+  .tzg{width:clamp(150px,19vh,250px);height:clamp(150px,19vh,250px);font-size:clamp(110px,14vh,184px)}
+  @supports (height:1dvh){.tzg{width:clamp(150px,19dvh,250px);height:clamp(150px,19dvh,250px);font-size:clamp(110px,14dvh,184px)}}
+  .sopt{min-height:clamp(56px,6.4vh,76px)}
+  .ropt{min-height:clamp(70px,8.6vh,104px);font-size:clamp(44px,5.6vh,64px)}
+  .qstep,.qinfo{margin-top:clamp(8px,1.3vh,16px)}
+  .qpy{margin-top:4px}
+  .qinfo{padding:8px 18px;line-height:1.6}
+  .qh{margin-bottom:8px}
+  .qdots{margin-bottom:4px}
+}

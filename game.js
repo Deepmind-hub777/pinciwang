@@ -182,13 +182,41 @@ function renderHome(){
     :'<div class="howto"><b>玩法说明</b><br>每关 10 个常用字。先选这个字的<b>结构</b>，再从四个里选出它的<b>部首</b>；答错会标出正确答案。<br>'+
     '部首按国家规范《汉字部首表》和《部首归部规范》（新版《新华字典》同一标准）；答完点大字能听读音。<br>答对 6 个过关，全对得三星。</div>')+
     '</div>';
-  $("app").innerHTML=h;
+  $("app").innerHTML=h; setView("v-home");
   $("start").onclick=function(){sfx.click();renderLevel(nx);};
   $("pick").onclick=function(){openPicker();};
   if($("hgift")) $("hgift").onclick=function(){claimGift();renderHome();};
   document.querySelectorAll(".gtab").forEach(function(el){el.onclick=function(){var g=el.getAttribute("data-g");if(g!==S.g){S.g=g;save();sfx.click();renderHome();}};});
   $("mus").onclick=function(){S.music=!S.music;save();this.classList.toggle("on",S.music);AU.unlock();if(S.music)AU.startBgm();else AU.stopBgm();toast(S.music?"背景音乐：开":"背景音乐：关");};
 }
+/* ---------- 响应式：视图类名 + 棋盘按可用宽高自适应（v7） ---------- */
+var TWOQ="(orientation:landscape) and (min-width:640px)";
+function setView(v){ var a=$("app"); a.className=v; window.scrollTo(0,0); }
+function fitBoard(){
+  var b=$("board"), stage=$("stage"), play=$("play"), app=$("app"); if(!b||!stage||!play) return;
+  var vb=b.viewBox.baseVal, ratio=vb.height/vb.width;
+  var two=window.matchMedia(TWOQ).matches;
+  app.classList.add("measuring"); b.style.width="0px"; b.style.height="0px";
+  var vh=window.innerHeight, maxW=stage.clientWidth;
+  var bodyCS=getComputedStyle(document.body), appCS=getComputedStyle(app);
+  var below=parseFloat(appCS.paddingBottom)+parseFloat(bodyCS.paddingBottom)+parseFloat(appCS.borderBottomWidth||0);
+  var maxH;
+  if(two){ maxH=vh-(stage.getBoundingClientRect().top+window.scrollY)-below-4; }
+  else { var top=app.getBoundingClientRect().top+window.scrollY; maxH=vh-(play.getBoundingClientRect().bottom+window.scrollY-top)-top-below-6; }
+  var cap=two?900:760, w=Math.min(maxW,cap,maxH/ratio);
+  w=Math.max(w,Math.min(maxW,250));
+  b.style.width=Math.floor(w)+"px"; b.style.height=Math.floor(w*ratio)+"px";
+  app.classList.remove("measuring");
+}
+(function(){
+  var lw=window.innerWidth, lh=window.innerHeight, t=null, fine=window.matchMedia("(pointer:fine)").matches;
+  function go(){ var w=window.innerWidth, h=window.innerHeight;
+    /* 安卓地址栏伸缩只改变高度几十像素：触屏设备上忽略，避免棋盘跳动 */
+    if(!fine && w===lw && Math.abs(h-lh)<120) return;
+    lw=w; lh=h; if($("board")&&$("app").classList.contains("v-play")) fitBoard(); }
+  window.addEventListener("resize",function(){ clearTimeout(t); t=setTimeout(go,120); });
+  window.addEventListener("orientationchange",function(){ clearTimeout(t); t=setTimeout(function(){ lw=-1; go(); },250); });
+})();
 /* ---------- play ---------- */
 var st={idx:0,L:null,svg:null,geoms:[],sel:new Set(),down:false,moved:false,mode:true,sx:0,sy:0,timer:null,token:0};
 function layout(k){ // returns [cols,rows,positions]
@@ -203,7 +231,7 @@ function layout(k){ // returns [cols,rows,positions]
 function renderLevel(i){
   if(S.g==="bushou") return renderQuiz(i);
   var tok=++st.token;
-  $("app").innerHTML='<div class="loading">正在载入第 '+meta(i).n+' 关…</div>';
+  setView(""); $("app").innerHTML='<div class="loading">正在载入第 '+meta(i).n+' 关…</div>';
   getLevel(S.g,i).then(function(L){ if(tok===st.token) drawLevel(i,L); })
     .catch(function(e){ toast(e.message||"载入失败"); renderHome(); });
   // 预取下一包
@@ -226,19 +254,18 @@ function drawLevel(i,L){
         '<div class="gift" id="gift" aria-label="每日礼包"><div class="box">'+ICON.gift+'</div><div class="cd" id="cd">--:--:--</div></div>'+
         '<div class="titlebox"><div class="lvl">'+(S.g==="bonus"?'<span class="gtag">后花园</span>':'')+'第'+L.n+'关</div><div class="goal">找出<b>'+L.a.length+'</b>'+unitWord()+'</div></div></div>'+
         coinHTML().replace('class="coin"','class="coin" style="position:absolute;right:14px;top:14px"')+
-        '<div class="slots kai'+(S.g==="bonus"?" bonus":"")+'" id="slots"></div>'+
-        '<div class="stage">'+svg+'</div>'+
+        '<div class="play" id="play"><div class="slots kai'+(S.g==="bonus"?" bonus":"")+'" id="slots"></div>'+
+        '<div class="stage" id="stage">'+svg+'</div>'+
         '<div class="tip" id="tip"></div>'+
         '<div class="acts"><div class="btn" id="hint">提示<span class="cost">-'+HINT_COST+'</span></div>'+
-        '<div class="btn" id="clear">清空</div><div class="btn primary off" id="submit">提交</div></div>';
-  $("app").innerHTML=h;
-  var bw=Math.max(260,Math.min(window.innerWidth*0.9,410,window.innerHeight-330)); $("board").style.width=bw+"px"; $("board").style.height=(bw*(H+2*pad)/(W+2*pad))+"px";
+        '<div class="btn" id="clear">清空</div><div class="btn primary off" id="submit">提交</div></div></div>';
+  $("app").innerHTML=h; setView("v-play");
   $("gear").onclick=openSettings;
   $("gift").onclick=claimGift;
   $("clear").onclick=function(){st.sel.clear();paint();sfx.click();};
   $("hint").onclick=useHint;
   $("submit").onclick=submit;
-  buildGeom(); renderSlots(); paint(); bindPointer(); startTimer();
+  renderSlots(); fitBoard(); buildGeom(); paint(); bindPointer(); startTimer();
   st.streak=0; st.wrongRun=0; AU.preloadLevel(L); sfx.start(); AU.line(tier(i),350);
 }
 /* 存档兼容：答案表更新后，去掉已不在本关答案里的旧记录；已通关与星级保持不变 */
@@ -425,15 +452,15 @@ function drawQuiz(){
   var q=qz.qs[qz.k]; qz.step=1; qz.ans1=null; qz.ans2=null;
   var dots=qz.qs.map(function(_,j){ var c=j<qz.k?(qz.res[j]?"ok":"no"):(j===qz.k?"cur":""); return '<i class="'+c+'"></i>'; }).join("");
   var h=quizHdr()+
-    '<div class="qdots" aria-hidden="true">'+dots+'</div>'+
-    '<div class="qzi"><div class="tzg kai" id="qzi" aria-label="'+esc(q.c)+'"><span>'+esc(q.c)+'</span></div><div class="qpy" id="qpy"></div></div>'+
+    '<div class="quiz">'+
+    '<div class="qzi"><div class="qdots" aria-hidden="true">'+dots+'</div><div class="tzg kai" id="qzi" aria-label="'+esc(q.c)+'"><span>'+esc(q.c)+'</span></div><div class="qpy" id="qpy"></div></div>'+
     '<div class="qstep" id="qs1"><div class="qh"><em>1</em>这个字是什么结构？</div><div class="sgrid">'+
       STRUCTS.map(function(t){return '<div class="sopt" data-v="'+t+'"><svg viewBox="0 0 24 24" aria-hidden="true">'+SICON[t]+'</svg><span>'+t+'</span></div>';}).join("")+'</div></div>'+
     '<div class="qstep wait" id="qs2"><div class="qh"><em>2</em>它的部首是哪一个？</div><div class="rgrid">'+
       q.opts.map(function(o){return '<div class="ropt kai" data-v="'+esc(o)+'">'+esc(o)+'</div>';}).join("")+'</div></div>'+
     '<div class="qinfo" id="qinfo"></div>'+
-    '<div class="acts qacts"><div class="btn primary off" id="qnext">下一题</div></div>';
-  $("app").innerHTML=h;
+    '<div class="acts qacts"><div class="btn primary off" id="qnext">下一题</div></div></div>';
+  $("app").innerHTML=h; setView("v-quiz");
   $("gear").onclick=openSettings; $("gift").onclick=claimGift; startTimer();
   document.querySelectorAll(".sopt").forEach(function(el){ el.onclick=function(){ pickStruct(el); }; });
   document.querySelectorAll(".ropt").forEach(function(el){ el.onclick=function(){ pickRad(el); }; });
@@ -559,5 +586,5 @@ function openPicker(){
 }
 
 load(); renderHome();
-window.__pcw={AU:AU,S:S,st:st,IDX:IDX,BS:BS,qz:function(){return qz;},renderQuiz:renderQuiz,getLevel:getLevel,renderLevel:renderLevel,submit:submit,useHint:useHint,renderHome:renderHome};
+window.__pcw={AU:AU,S:S,st:st,IDX:IDX,BS:BS,qz:function(){return qz;},renderQuiz:renderQuiz,getLevel:getLevel,renderLevel:renderLevel,openWin:openWin,openPicker:openPicker,openSettings:openSettings,fitBoard:fitBoard,submit:submit,useHint:useHint,renderHome:renderHome};
 })();
